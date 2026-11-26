@@ -10,3 +10,6 @@ build/
 .ruff_cache/
 *.tmp
 .DS_Store
+
+# Tools installed by make (git-mkver)
+.tools/
