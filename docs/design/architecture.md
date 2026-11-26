@@ -15,6 +15,9 @@ src/fake_backends/            namespace package: no __init__.py
 │   ├── journal.py            the request journal
 │   ├── store.py              seed state: tokens and backend data
 │   ├── serve.py              uvicorn server that can abort connections
+│   ├── registry.py           every backend an image can serve, and which are released
+│   ├── core.py               CoreBackend: the control API alone, for the image smoke test
+│   ├── __main__.py           the image's entry point, configured by FAKE_* env vars
 │   └── constants.py
 └── testing/                  the pytest helper (issue 8; Python 3.11)
 ```
@@ -35,6 +38,12 @@ Each fake (fake-github, fake-jira, fake-jenkins) is a subclass of `Backend` hand
 | `supports_hook(spec)` / `hook_action(spec, request)` | no hooks | add service-specific faults, such as a GraphQL `errors[]` entry |
 
 Handlers read seed data from `request.app.state.store.data` and the caller from `request.state.identity`.
+
+A new fake is registered in `registry.BACKENDS`, with `published=True` once it should be released. That one entry is what the `Dockerfile`'s `BACKEND` argument, the entry point and CI's build matrix (`utils/list_images.py`) all read.
+
+## Running a fake
+
+`python -m fake_backends.server` serves the backend named by `FAKE_BACKEND`, on `FAKE_HOST` and `FAKE_PORT` (`0.0.0.0:8080` by default). Each image sets `FAKE_BACKEND` at build time. Releasing the images is described in [ADR 0005](adr/0005-release-from-tags.md).
 
 ## The request pipeline
 

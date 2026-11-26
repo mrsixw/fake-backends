@@ -4,6 +4,8 @@ from http import HTTPStatus
 
 __all__ = [
     "CONTROL_PREFIX",
+    "DEFAULT_HOST",
+    "DEFAULT_PORT",
     "HEALTH_PATH",
     "JSON_CONTENT_TYPE",
     "MALFORMED_JSON_BODY",
@@ -19,6 +21,11 @@ __all__ = [
 # journaled or authenticated.
 CONTROL_PREFIX = "/_fake"
 HEALTH_PATH = "/healthz"
+
+# Where a fake listens unless FAKE_HOST and FAKE_PORT say otherwise. All
+# interfaces, because inside a container that is the only way to be reached.
+DEFAULT_HOST = "0.0.0.0"
+DEFAULT_PORT = 8080
 
 JSON_CONTENT_TYPE = "application/json"
 TEXT_CONTENT_TYPE = "text/plain; charset=utf-8"

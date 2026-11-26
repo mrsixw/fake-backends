@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+#
+# A stand-in for gh in the release tests. It answers the generate-notes API
+# call with a fixed body, and records a release create's arguments and notes
+# file under GH_STUB_LOG.
+
+set -euo pipefail
+
+case "${1:-} ${2:-}" in
+  "api repos/"*)
+    echo "generated notes"
+    ;;
+  "release create")
+    printf '%s ' "$@" | sed 's/ $//' > "${GH_STUB_LOG}/release-args"
+    while [[ $# -gt 0 ]]; do
+      if [[ "$1" == "--notes-file" ]]; then
+        cp "$2" "${GH_STUB_LOG}/notes"
+      fi
+      shift
+    done
+    ;;
+  *)
+    echo "gh stub: unexpected call: $*" >&2
+    exit 1
+    ;;
+esac

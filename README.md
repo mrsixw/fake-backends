@@ -4,9 +4,9 @@ Container-hosted fake **GitHub**, **JIRA** and **Jenkins** APIs with fault injec
 
 Each fake serves the API calls a real tool makes. It can be seeded with data, told to fail on purpose, and asked which requests it received. End-to-end suites can then drive a real built binary through both its happy paths and its failure paths: rate limits, 5xx responses, timeouts, dropped connections and malformed bodies.
 
-> **Status:** nothing is built yet. The work is tracked in this repo's issues.
+> **Status:** the shared server core and the image pipeline are built. No fake API is published yet: the work is tracked in this repo's issues.
 
-## Images (planned)
+## Images
 
 | Image | Serves | Issue |
 |---|---|---|
@@ -78,9 +78,28 @@ Any action also takes `delay_seconds`, which waits before acting.
 
 ```bash
 make format   # black, then ruff --fix
-make lint     # ruff and black --check
+make lint     # ruff, black --check, shellcheck and actionlint
 make test     # pytest against a real uvicorn server
+make bats     # the release scripts, with the pinned git-mkver
 ```
+
+### Building and running an image
+
+One `Dockerfile` builds every fake. `BACKEND` picks which one, from the registry in `src/fake_backends/server/registry.py`:
+
+```bash
+make image BACKEND=core                    # docker build, tagged fake-core:dev
+make smoke BACKEND=core                    # build, then utils/smoke_test_image.sh
+make smoke BACKEND=core RUNTIME=container  # Apple's container instead of docker
+```
+
+The image listens on port 8080, runs as an unprivileged user and has a `HEALTHCHECK` on `/healthz`. `core` serves only the control API: it exists so the image can be built and tested before any fake does, and is never published.
+
+## Releases
+
+Every merge to `main` releases. git-mkver computes the version from the tags and the Conventional Commit messages since the last one, and every pull request's `version` check shows what its merge would release.
+
+A release pushes each published image to `ghcr.io/mrsixw/<image>:<version>` for `linux/amd64` and `linux/arm64`, then creates the tag and a GitHub release listing each image's digest. Pin images by that digest. The first release of a new image stops until its GHCR package is made public, a one-time switch in the package's settings. Nothing is pushed outside a release, and no version commit is pushed to `main`: see [ADR 0005](docs/design/adr/0005-release-from-tags.md).
 
 ## Consumers
 
