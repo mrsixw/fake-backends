@@ -1,7 +1,7 @@
 """Seed state: the tokens a fake accepts, and the data it serves."""
 
 import json
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from typing import Any
 
 import yaml
@@ -19,25 +19,29 @@ class Store:
     """The fake's current state.
 
     ``tokens`` maps each accepted token to the identity it authenticates as.
-    ``data`` holds every other top-level seed key, for the backend to serve.
+    ``data`` is what ``parse`` (the backend's ``parse_state``) made of every
+    other top-level seed key.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, parse: Callable[[Mapping[str, Any]], Any] = dict) -> None:
+        self._parse = parse
         self.tokens: dict[str, str] = {}
-        self.data: dict[str, Any] = {}
+        self.data: Any = parse({})
 
     def load(self, seed: Mapping[str, Any]) -> None:
+        """Replace the state with ``seed``, or change nothing if it is invalid."""
         tokens = seed.get("tokens", {})
         if not isinstance(tokens, Mapping) or not all(
             isinstance(k, str) and isinstance(v, str) for k, v in tokens.items()
         ):
             raise SeedError("seed 'tokens' must map token strings to identities")
+        data = self._parse({k: v for k, v in seed.items() if k != "tokens"})
         self.tokens = dict(tokens)
-        self.data = {k: v for k, v in seed.items() if k != "tokens"}
+        self.data = data
 
     def reset(self) -> None:
         self.tokens = {}
-        self.data = {}
+        self.data = self._parse({})
 
 
 def parse_seed(body: bytes, content_type: str) -> Mapping[str, Any]:

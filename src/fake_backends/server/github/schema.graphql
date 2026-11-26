@@ -1,0 +1,198 @@
+# A trimmed copy of GitHub's public GraphQL schema
+# (https://docs.github.com/public/fpt/schema.docs.graphql).
+#
+# Only the types and fields breakfast and gh-snitch query are kept, with
+# GitHub's own names, types and argument lists, so a query that validates
+# here validates on github.com. Arguments that are accepted but have no
+# effect in the fake are marked "ignored". Add a field only when a consumer
+# starts sending it.
+
+scalar DateTime
+scalar URI
+
+enum SearchType {
+  DISCUSSION
+  ISSUE
+  ISSUE_ADVANCED
+  ISSUE_HYBRID
+  ISSUE_SEMANTIC
+  REPOSITORY
+  USER
+}
+
+enum PullRequestReviewDecision {
+  APPROVED
+  CHANGES_REQUESTED
+  REVIEW_REQUIRED
+}
+
+enum PullRequestReviewState {
+  APPROVED
+  CHANGES_REQUESTED
+  COMMENTED
+  DISMISSED
+  PENDING
+}
+
+enum PullRequestState {
+  CLOSED
+  MERGED
+  OPEN
+}
+
+enum IssueState {
+  CLOSED
+  OPEN
+}
+
+type Query {
+  search(
+    after: String
+    before: String # ignored
+    first: Int
+    last: Int # ignored
+    query: String!
+    type: SearchType!
+  ): SearchResultItemConnection!
+
+  repositoryOwner(login: String!): RepositoryOwner
+
+  repository(
+    followRenames: Boolean = true # ignored
+    name: String!
+    owner: String!
+  ): Repository
+
+  user(login: String!): User
+
+  rateLimit(dryRun: Boolean = false): RateLimit
+}
+
+type PageInfo {
+  endCursor: String
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+}
+
+type RateLimit {
+  cost: Int!
+  limit: Int!
+  nodeCount: Int!
+  remaining: Int!
+  resetAt: DateTime!
+  used: Int!
+}
+
+union SearchResultItem = Issue | PullRequest
+
+type SearchResultItemConnection {
+  issueCount: Int!
+  nodes: [SearchResultItem]
+  pageInfo: PageInfo!
+}
+
+interface Actor {
+  login: String!
+}
+
+interface RepositoryOwner {
+  login: String!
+  repositories(
+    after: String
+    first: Int
+    isArchived: Boolean
+    isFork: Boolean
+  ): RepositoryConnection!
+}
+
+type User implements Actor & RepositoryOwner {
+  login: String!
+  repositories(
+    after: String
+    first: Int
+    isArchived: Boolean
+    isFork: Boolean
+  ): RepositoryConnection!
+  contributionsCollection(
+    from: DateTime
+    organizationID: ID # ignored
+    to: DateTime
+  ): ContributionsCollection!
+}
+
+type Organization implements Actor & RepositoryOwner {
+  login: String!
+  repositories(
+    after: String
+    first: Int
+    isArchived: Boolean
+    isFork: Boolean
+  ): RepositoryConnection!
+}
+
+type RepositoryConnection {
+  nodes: [Repository]
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type Repository {
+  name: String!
+  nameWithOwner: String!
+  isArchived: Boolean!
+  url: URI!
+  owner: RepositoryOwner!
+  pullRequest(number: Int!): PullRequest
+}
+
+type Issue {
+  number: Int!
+  title: String!
+  url: URI!
+  state: IssueState!
+  repository: Repository!
+}
+
+type PullRequest {
+  number: Int!
+  title: String!
+  url: URI!
+  state: PullRequestState!
+  isDraft: Boolean!
+  repository: Repository!
+  reviewDecision: PullRequestReviewDecision
+  reviews(
+    after: String
+    author: String # ignored
+    before: String # ignored
+    first: Int
+    last: Int # ignored
+    states: [PullRequestReviewState!]
+  ): PullRequestReviewConnection
+}
+
+type PullRequestReviewConnection {
+  nodes: [PullRequestReview]
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type PullRequestReview {
+  author: Actor
+  state: PullRequestReviewState!
+}
+
+type ContributionsCollection {
+  contributionCalendar: ContributionCalendar!
+  restrictedContributionsCount: Int!
+  totalCommitContributions: Int!
+  totalIssueContributions: Int!
+  totalPullRequestContributions: Int!
+  totalPullRequestReviewContributions: Int!
+  totalRepositoryContributions: Int!
+}
+
+type ContributionCalendar {
+  totalContributions: Int!
+}

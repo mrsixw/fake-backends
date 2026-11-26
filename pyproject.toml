@@ -6,6 +6,7 @@ readme = "README.md"
 license = "MIT"
 requires-python = ">=3.14"
 dependencies = [
+    "graphql-core>=3.3.2",
     "pyyaml>=6.0.4",
     "starlette>=1.10",
     # The connection abort depends on uvicorn's protocol and context handling;
@@ -16,6 +17,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "black>=26.10.1",
+    "jsonschema>=4.26.0",
     "pytest>=9.2",
     "requests>=2.34.2",
     "ruff>=0.17.6",

@@ -55,6 +55,14 @@ class FakeClient:
         """Replace the fake's state. ``tokens`` maps each token to an identity."""
         self._call("PUT", "/_fake/state", state)
 
+    def fixtures(self) -> list[str]:
+        """The ready-made seeds this fake ships, such as ``breakfast-fixtures``."""
+        return self._call("GET", "/_fake/fixtures")
+
+    def load_fixture(self, name: str) -> None:
+        """Replace the fake's state with one of its ready-made seeds."""
+        self._call("POST", f"/_fake/fixtures/{name}")
+
     def reset(self) -> None:
         """Clear the state, every fault rule and the journal."""
         self._call("POST", "/_fake/reset")

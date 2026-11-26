@@ -84,3 +84,39 @@ def test_a_fake_that_cannot_start_errors_the_test(pytester):
             "*unknown backend 'nope'*",
         ]
     )
+
+
+def test_a_fixture_loads_a_fakes_ready_made_seed(pytester):
+    pytester.makeconftest(textwrap.dedent(f"""
+            from fake_backends.testing import fake_fixture
+            fake_github = fake_fixture(
+                "github",
+                mode="process",
+                source={str(REPO_ROOT)!r},
+                fixture="breakfast-fixtures",
+            )
+            """))
+    pytester.makepyfile("""
+        import json
+        import urllib.request
+
+        def test_fixture_prs(fake_github):
+            assert fake_github.fixtures() == ["breakfast-fixtures"]
+            request = urllib.request.Request(
+                fake_github.url("/repos/mrsixw/breakfast-fixtures/pulls/8"),
+                headers={"Authorization": "Bearer token-mrsixw"},
+            )
+            with urllib.request.urlopen(request) as response:
+                assert json.load(response)["merged"] is True
+        """)
+    result = pytester.runpytest_subprocess()
+    result.assert_outcomes(passed=1)
+
+
+def test_seed_and_fixture_together_are_refused():
+    import pytest
+
+    from fake_backends.testing import fake_fixture
+
+    with pytest.raises(ValueError, match="not both"):
+        fake_fixture("github", seed={}, fixture="breakfast-fixtures")
