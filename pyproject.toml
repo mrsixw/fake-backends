@@ -1,0 +1,46 @@
+[project]
+name = "fake-backends"
+version = "0.0.0"
+description = "Container-hosted fake GitHub, JIRA and Jenkins APIs with fault injection, for end-to-end tests"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.14"
+dependencies = [
+    "pyyaml>=6.0.2",
+    "starlette>=0.47",
+    "uvicorn>=0.35",
+]
+
+[dependency-groups]
+dev = [
+    "black>=25.1",
+    "pytest>=8.4",
+    "requests>=2.32",
+    "ruff>=0.12",
+]
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+# fake_backends is a namespace package: the server lives in fake_backends.server
+# here, and the test helper ships fake_backends.testing as its own distribution.
+packages = ["src/fake_backends"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py314"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "PLR2004"]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests assert against literal expected values by design.
+"tests/**" = ["PLR2004"]
+
+[tool.black]
+line-length = 88

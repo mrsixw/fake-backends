@@ -21,6 +21,67 @@ All three are built on a shared core ([issue 1](https://github.com/mrsixw/fake-b
 
 A nightly conformance check ([issue 5](https://github.com/mrsixw/fake-backends/issues/5)) compares the fakes with real GitHub and Jenkins.
 
+## Control API
+
+Every fake serves these endpoints. Requests to them are never faulted, journaled or authenticated.
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /healthz` | Returns `{"status": "ok"}` once the fake is up |
+| `PUT /_fake/state` | Load seed data as JSON, or as YAML with `Content-Type: application/yaml`. `tokens` maps each accepted token to an identity; every other key belongs to the backend. Replaces the previous state. |
+| `POST /_fake/reset` | Clear the state, the fault rules and the journal |
+| `POST /_fake/faults` | Register a fault rule. Returns `201` with its `id`. |
+| `GET /_fake/faults` | List the rules with their `matched` and `fired` counts and whether each is `spent` |
+| `DELETE /_fake/faults` | Remove every rule |
+| `DELETE /_fake/faults/{id}` | Remove one rule |
+| `GET /_fake/requests` | The journal: method, path, query, identity, backend details, the rule that fired, and a timestamp, in arrival order |
+
+### Fault rules
+
+```json
+{
+  "match": {"method": "GET", "path": "/repos/*", "identity": "alice"},
+  "fire": {"on": "nth", "n": 2, "cap": 1},
+  "action": {"type": "respond", "status": 403,
+             "headers": {"X-RateLimit-Remaining": "0"},
+             "body": {"message": "API rate limit exceeded"}}
+}
+```
+
+- **`match`**
+  - `method`: case-insensitive.
+  - `path`: an `fnmatch` glob.
+  - `identity`: the identity the caller's token maps to.
+  - Any other key is a backend detail. It must equal the detail's value, or be one of its members when the detail is a list, such as GraphQL root fields.
+  - An empty `match` matches everything.
+- **`fire`**
+  - `on`: `always` (the default), `nth` (only the nth matching request) or `after` (every matching request after the first `n`).
+  - `cap`: limits how many times the rule fires. A spent rule stays listed.
+- **Counting**
+  - A rule counts only the requests it matches, from when it is registered.
+  - When several rules match, every one of them counts the request, but only the earliest registered rule that fires answers it.
+  - Counts reset only when the rule is removed or the fake is reset.
+- **Faults fire before authentication.** A canned 503 is a 503 whatever credential was sent.
+
+| Action | Effect |
+|---|---|
+| `respond` | Answer with `status`, plus optional `headers` and `body`. A string body is sent as text; anything else as JSON. |
+| `delay` | Wait `seconds`, then answer normally |
+| `drop` | Close the connection before sending anything |
+| `truncate` | Send the real response's headers and only `keep_bytes` of its body (half by default), then close |
+| `malformed_json` | Answer `200` with a body that is not valid JSON |
+| `hook` | A backend-specific action, such as a GraphQL `errors[]` entry |
+
+Any action also takes `delay_seconds`, which waits before acting.
+
+## Development
+
+```bash
+make format   # black, then ruff --fix
+make lint     # ruff and black --check
+make test     # pytest against a real uvicorn server
+```
+
 ## Consumers
 
 - [breakfast](https://github.com/mrsixw/breakfast): [issue 536](https://github.com/mrsixw/breakfast/issues/536)
