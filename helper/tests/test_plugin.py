@@ -120,3 +120,45 @@ def test_seed_and_fixture_together_are_refused():
 
     with pytest.raises(ValueError, match="not both"):
         fake_fixture("github", seed={}, fixture="breakfast-fixtures")
+
+
+def test_env_configures_the_fake(pytester):
+    """fake-jira's mode is chosen by FAKE_JIRA_MODE; both can run at once."""
+    pytester.makeconftest(textwrap.dedent(f"""
+            from fake_backends.testing import fake_fixture
+            seed = {{"tokens": {{"t": "alice"}}}}
+            jira_cloud = fake_fixture(
+                "jira", mode="process", source={str(REPO_ROOT)!r},
+                env={{"FAKE_JIRA_MODE": "cloud"}}, seed=seed,
+            )
+            jira_server = fake_fixture(
+                "jira", mode="process", source={str(REPO_ROOT)!r},
+                env={{"FAKE_JIRA_MODE": "server"}}, seed=seed,
+            )
+            """))
+    pytester.makepyfile("""
+        import base64
+        import urllib.error
+        import urllib.request
+
+        BASIC = "Basic " + base64.b64encode(b"alice@example.com:t").decode()
+
+        def _status(fake, path):
+            request = urllib.request.Request(
+                fake.url(path), headers={"Authorization": BASIC}
+            )
+            try:
+                with urllib.request.urlopen(request) as response:
+                    return response.status
+            except urllib.error.HTTPError as exc:
+                return exc.code
+
+        def test_modes(jira_cloud, jira_server):
+            assert jira_cloud.base_url != jira_server.base_url
+            assert _status(jira_cloud, "/rest/api/3/myself") == 200
+            assert _status(jira_cloud, "/rest/api/2/myself") == 404
+            assert _status(jira_server, "/rest/api/2/myself") == 200
+            assert _status(jira_server, "/rest/api/3/myself") == 404
+        """)
+    result = pytester.runpytest_subprocess()
+    result.assert_outcomes(passed=1)

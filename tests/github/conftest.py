@@ -1,22 +1,15 @@
 """fake-github on a real server, plus helpers for seeding, GraphQL and schemas."""
 
-import json
 from pathlib import Path
 
 import pytest
 import requests
-from jsonschema import Draft202012Validator
-from referencing import Registry
-from referencing.jsonschema import DRAFT202012
 
 from fake_backends.server.github import GitHubBackend
 from tests.conftest import IDENTITY, TOKEN, serve
+from tests.openapi import Schemas
 
-OPENAPI = json.loads((Path(__file__).parent / "openapi_subset.json").read_text())
-_COMPONENTS_URI = "urn:github:openapi"
-_REGISTRY = Registry().with_resource(
-    _COMPONENTS_URI, DRAFT202012.create_resource(OPENAPI)
-)
+SCHEMAS = Schemas(Path(__file__).parent / "openapi_subset.json")
 
 
 @pytest.fixture(scope="session")
@@ -49,40 +42,14 @@ def gql(base_url, auth):
     return _post
 
 
-def _rewrite_refs(node):
-    """Point the description's local $refs at the registered document."""
-    if isinstance(node, dict):
-        return {
-            key: (
-                f"{_COMPONENTS_URI}{value}"
-                if key == "$ref" and isinstance(value, str) and value.startswith("#/")
-                else _rewrite_refs(value)
-            )
-            for key, value in node.items()
-        }
-    if isinstance(node, list):
-        return [_rewrite_refs(item) for item in node]
-    return node
-
-
 def schema_errors(operation: str, body) -> list[str]:
     """Every way ``body`` breaks GitHub's schema for ``operation``.
 
-    ``operation`` is "METHOD /path/template STATUS", as listed in
-    utils/trim_github_openapi.py.
+    ``operation`` is "METHOD /path/template STATUS", as listed for the github
+    target in utils/trim_openapi.py.
     """
-    schema = _rewrite_refs(OPENAPI["operations"][operation])
-    validator = Draft202012Validator(schema, registry=_REGISTRY)
-    return [
-        f"{'/'.join(map(str, error.absolute_path))}: {error.message}"
-        for error in validator.iter_errors(body)
-    ]
+    return SCHEMAS.errors(operation, body)
 
 
 def component_errors(name: str, body) -> list[str]:
-    return schema_errors_for({"$ref": f"#/components/schemas/{name}"}, body)
-
-
-def schema_errors_for(schema, body) -> list[str]:
-    validator = Draft202012Validator(_rewrite_refs(schema), registry=_REGISTRY)
-    return [error.message for error in validator.iter_errors(body)]
+    return SCHEMAS.component_errors(name, body)

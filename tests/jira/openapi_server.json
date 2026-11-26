@@ -1,0 +1,913 @@
+{
+ "source": "https://dac-static.atlassian.com/server/jira/platform/jira_software_dc_11003_swagger.v3.json",
+ "source_ref": "11.3.14, downloaded 2026-11-26",
+ "version": "11.3.14",
+ "fixes": [
+  {
+   "component": "IssueBean",
+   "path": "properties/fields/additionalProperties",
+   "why": "Declares every issue field an object, but its own example has \"description\": \"example bug report\" and \"updated\": 1, and summary, labels and created are strings and lists in practice."
+  }
+ ],
+ "operations": {
+  "GET /myself 200": {
+   "$ref": "#/components/schemas/UserBean"
+  },
+  "GET /issue/{issueIdOrKey} 200": {
+   "$ref": "#/components/schemas/IssueBean"
+  },
+  "POST /issue 201": {
+   "$ref": "#/components/schemas/IssueCreateResponse"
+  },
+  "POST /issue/{issueIdOrKey}/comment 201": {
+   "$ref": "#/components/schemas/CommentJsonBean"
+  },
+  "GET /issue/{issueIdOrKey}/transitions 200": {
+   "$ref": "#/components/schemas/TransitionsMetaBean"
+  },
+  "GET /search 200": {
+   "$ref": "#/components/schemas/SearchResultsBean"
+  }
+ },
+ "components": {
+  "schemas": {
+   "ChangeHistoryBean": {
+    "type": "object",
+    "properties": {
+     "author": {
+      "$ref": "#/components/schemas/UserJsonBean"
+     },
+     "created": {
+      "type": "string",
+      "format": "date-time"
+     },
+     "historyMetadata": {
+      "$ref": "#/components/schemas/HistoryMetadata"
+     },
+     "id": {
+      "type": "string"
+     },
+     "items": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/ChangeItemBean"
+      }
+     }
+    }
+   },
+   "ChangeItemBean": {
+    "type": "object",
+    "properties": {
+     "field": {
+      "type": "string"
+     },
+     "fieldtype": {
+      "type": "string"
+     },
+     "from": {
+      "type": "string"
+     },
+     "fromString": {
+      "type": "string"
+     },
+     "to": {
+      "type": "string"
+     },
+     "toString": {
+      "type": "string"
+     }
+    }
+   },
+   "ChangelogBean": {
+    "type": "object",
+    "properties": {
+     "histories": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/ChangeHistoryBean"
+      }
+     },
+     "maxResults": {
+      "type": "integer",
+      "format": "int32"
+     },
+     "startAt": {
+      "type": "integer",
+      "format": "int32"
+     },
+     "total": {
+      "type": "integer",
+      "format": "int32"
+     }
+    }
+   },
+   "CommentJsonBean": {
+    "type": "object",
+    "properties": {
+     "author": {
+      "$ref": "#/components/schemas/UserJsonBean"
+     },
+     "body": {
+      "type": "string"
+     },
+     "created": {
+      "type": "string"
+     },
+     "id": {
+      "type": "string"
+     },
+     "properties": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/EntityPropertyBean"
+      }
+     },
+     "renderedBody": {
+      "type": "string"
+     },
+     "self": {
+      "type": "string"
+     },
+     "updateAuthor": {
+      "$ref": "#/components/schemas/UserJsonBean"
+     },
+     "updated": {
+      "type": "string"
+     },
+     "visibility": {
+      "$ref": "#/components/schemas/VisibilityJsonBean"
+     }
+    }
+   },
+   "CommentsWithPaginationJsonBean": {
+    "type": "object",
+    "properties": {
+     "comments": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/CommentJsonBean"
+      }
+     },
+     "maxResults": {
+      "type": "integer",
+      "format": "int32"
+     },
+     "startAt": {
+      "type": "integer",
+      "format": "int32"
+     },
+     "total": {
+      "type": "integer",
+      "format": "int32"
+     }
+    }
+   },
+   "EditMetaBean": {
+    "type": "object"
+   },
+   "EntityPropertyBean": {
+    "type": "object",
+    "properties": {
+     "key": {
+      "type": "string"
+     },
+     "value": {
+      "type": "string"
+     }
+    }
+   },
+   "ErrorCollection": {
+    "type": "object",
+    "properties": {
+     "errorMessages": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     },
+     "errors": {
+      "type": "object",
+      "additionalProperties": {
+       "type": "string"
+      }
+     }
+    }
+   },
+   "FieldMetaBean": {
+    "type": "object",
+    "properties": {
+     "allowedValues": {
+      "type": "array",
+      "items": {
+       "type": "object"
+      }
+     },
+     "autoCompleteUrl": {
+      "type": "string"
+     },
+     "defaultValue": {
+      "type": "object"
+     },
+     "fieldId": {
+      "type": "string"
+     },
+     "hasDefaultValue": {
+      "type": "boolean"
+     },
+     "name": {
+      "type": "string"
+     },
+     "operations": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     },
+     "required": {
+      "type": "boolean"
+     },
+     "schema": {
+      "$ref": "#/components/schemas/JsonTypeBean"
+     }
+    }
+   },
+   "HistoryMetadata": {
+    "type": "object",
+    "properties": {
+     "activityDescription": {
+      "type": "string"
+     },
+     "activityDescriptionKey": {
+      "type": "string"
+     },
+     "actor": {
+      "$ref": "#/components/schemas/HistoryMetadataParticipant"
+     },
+     "cause": {
+      "$ref": "#/components/schemas/HistoryMetadataParticipant"
+     },
+     "description": {
+      "type": "string"
+     },
+     "descriptionKey": {
+      "type": "string"
+     },
+     "emailDescription": {
+      "type": "string"
+     },
+     "emailDescriptionKey": {
+      "type": "string"
+     },
+     "extraData": {
+      "type": "object",
+      "additionalProperties": {
+       "type": "string"
+      }
+     },
+     "generator": {
+      "$ref": "#/components/schemas/HistoryMetadataParticipant"
+     },
+     "type": {
+      "type": "string"
+     }
+    }
+   },
+   "HistoryMetadataParticipant": {
+    "type": "object",
+    "properties": {
+     "avatarUrl": {
+      "type": "string"
+     },
+     "displayName": {
+      "type": "string"
+     },
+     "displayNameKey": {
+      "type": "string"
+     },
+     "id": {
+      "type": "string"
+     },
+     "type": {
+      "type": "string"
+     },
+     "url": {
+      "type": "string"
+     }
+    }
+   },
+   "IncludedFields": {
+    "type": "object",
+    "properties": {
+     "included": {
+      "uniqueItems": true,
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     }
+    }
+   },
+   "IssueBean": {
+    "type": "object",
+    "properties": {
+     "changelog": {
+      "$ref": "#/components/schemas/ChangelogBean"
+     },
+     "editmeta": {
+      "$ref": "#/components/schemas/EditMetaBean"
+     },
+     "fields": {
+      "type": "object",
+      "additionalProperties": {}
+     },
+     "fieldsToInclude": {
+      "$ref": "#/components/schemas/IncludedFields"
+     },
+     "id": {
+      "type": "string"
+     },
+     "key": {
+      "type": "string"
+     },
+     "names": {
+      "type": "object",
+      "additionalProperties": {
+       "type": "string"
+      }
+     },
+     "operations": {
+      "$ref": "#/components/schemas/OpsbarBean"
+     },
+     "properties": {
+      "$ref": "#/components/schemas/PropertiesBean"
+     },
+     "renderedFields": {
+      "type": "object",
+      "additionalProperties": {
+       "type": "object"
+      }
+     },
+     "schema": {
+      "type": "object",
+      "additionalProperties": {
+       "$ref": "#/components/schemas/JsonTypeBean"
+      }
+     },
+     "self": {
+      "type": "string",
+      "format": "uri"
+     },
+     "transitionBeans": {
+      "type": "array",
+      "writeOnly": true,
+      "items": {
+       "$ref": "#/components/schemas/TransitionBean"
+      }
+     },
+     "transitions": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/TransitionBean"
+      }
+     },
+     "versionedRepresentations": {
+      "type": "object",
+      "additionalProperties": {
+       "type": "object",
+       "additionalProperties": {
+        "type": "object"
+       }
+      }
+     }
+    },
+    "xml": {
+     "name": "issue"
+    }
+   },
+   "IssueCreateResponse": {
+    "type": "object",
+    "properties": {
+     "id": {
+      "type": "string"
+     },
+     "key": {
+      "type": "string"
+     },
+     "self": {
+      "type": "string"
+     }
+    }
+   },
+   "IssueTypeJsonBean": {
+    "type": "object",
+    "properties": {
+     "avatarId": {
+      "type": "integer",
+      "format": "int64"
+     },
+     "description": {
+      "type": "string"
+     },
+     "iconUrl": {
+      "type": "string"
+     },
+     "id": {
+      "type": "string"
+     },
+     "name": {
+      "type": "string"
+     },
+     "self": {
+      "type": "string"
+     },
+     "subtask": {
+      "type": "boolean"
+     }
+    }
+   },
+   "JsonTypeBean": {
+    "type": "object",
+    "properties": {
+     "custom": {
+      "type": "string"
+     },
+     "customId": {
+      "type": "integer",
+      "format": "int64"
+     },
+     "items": {
+      "type": "string"
+     },
+     "system": {
+      "type": "string"
+     },
+     "type": {
+      "type": "string"
+     }
+    }
+   },
+   "LinkGroupBean": {
+    "type": "object",
+    "properties": {
+     "groups": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/LinkGroupBean"
+      }
+     },
+     "header": {
+      "$ref": "#/components/schemas/SimpleLinkBean"
+     },
+     "id": {
+      "type": "string"
+     },
+     "links": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/SimpleLinkBean"
+      }
+     },
+     "styleClass": {
+      "type": "string"
+     },
+     "weight": {
+      "type": "integer",
+      "format": "int32"
+     }
+    }
+   },
+   "ListWrapperCallbackApplicationRoleBean": {
+    "type": "object"
+   },
+   "ListWrapperCallbackGroupJsonBean": {
+    "type": "object"
+   },
+   "OpsbarBean": {
+    "type": "object",
+    "properties": {
+     "linkGroups": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/LinkGroupBean"
+      }
+     }
+    }
+   },
+   "PriorityJsonBean": {
+    "type": "object",
+    "properties": {
+     "description": {
+      "type": "string"
+     },
+     "iconUrl": {
+      "type": "string"
+     },
+     "id": {
+      "type": "string"
+     },
+     "name": {
+      "type": "string"
+     },
+     "self": {
+      "type": "string"
+     },
+     "statusColor": {
+      "type": "string"
+     }
+    }
+   },
+   "ProjectCategoryJsonBean": {
+    "type": "object",
+    "properties": {
+     "description": {
+      "type": "string"
+     },
+     "id": {
+      "type": "string"
+     },
+     "name": {
+      "type": "string"
+     },
+     "self": {
+      "type": "string"
+     }
+    }
+   },
+   "ProjectJsonBean": {
+    "type": "object",
+    "properties": {
+     "avatarUrls": {
+      "type": "object",
+      "additionalProperties": {
+       "type": "string"
+      }
+     },
+     "id": {
+      "type": "string"
+     },
+     "key": {
+      "type": "string"
+     },
+     "name": {
+      "type": "string"
+     },
+     "projectCategory": {
+      "$ref": "#/components/schemas/ProjectCategoryJsonBean"
+     },
+     "projectTypeKey": {
+      "type": "string"
+     },
+     "self": {
+      "type": "string"
+     }
+    }
+   },
+   "PropertiesBean": {
+    "type": "object",
+    "properties": {
+     "properties": {
+      "type": "object",
+      "additionalProperties": {
+       "type": "string"
+      }
+     }
+    }
+   },
+   "SearchResultsBean": {
+    "type": "object",
+    "properties": {
+     "expand": {
+      "type": "string"
+     },
+     "issues": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/IssueBean"
+      }
+     },
+     "maxResultWindow": {
+      "type": "integer",
+      "description": "The maximum number of results that can be retrieved from the underlying search engine, or null if unlimited",
+      "format": "int32"
+     },
+     "maxResults": {
+      "type": "integer",
+      "description": "The number of results to return in this page.",
+      "format": "int32"
+     },
+     "names": {
+      "type": "object",
+      "additionalProperties": {
+       "type": "string"
+      }
+     },
+     "schema": {
+      "type": "object",
+      "additionalProperties": {
+       "$ref": "#/components/schemas/JsonTypeBean"
+      }
+     },
+     "startAt": {
+      "type": "integer",
+      "format": "int32"
+     },
+     "total": {
+      "type": "integer",
+      "format": "int32"
+     },
+     "warningMessages": {
+      "uniqueItems": true,
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     }
+    }
+   },
+   "SimpleLinkBean": {
+    "type": "object",
+    "properties": {
+     "href": {
+      "type": "string"
+     },
+     "iconClass": {
+      "type": "string"
+     },
+     "id": {
+      "type": "string"
+     },
+     "label": {
+      "type": "string"
+     },
+     "params": {
+      "type": "object",
+      "additionalProperties": {
+       "type": "string"
+      }
+     },
+     "styleClass": {
+      "type": "string"
+     },
+     "title": {
+      "type": "string"
+     },
+     "weight": {
+      "type": "integer",
+      "format": "int32"
+     }
+    },
+    "xml": {
+     "name": "link"
+    }
+   },
+   "SimpleListWrapperApplicationRoleBean": {
+    "type": "object",
+    "properties": {
+     "callback": {
+      "$ref": "#/components/schemas/ListWrapperCallbackApplicationRoleBean"
+     },
+     "maxResults": {
+      "type": "integer",
+      "format": "int32",
+      "xml": {
+       "name": "max-results",
+       "attribute": true
+      }
+     },
+     "pagingCallback": {
+      "$ref": "#/components/schemas/ListWrapperCallbackApplicationRoleBean"
+     },
+     "size": {
+      "type": "integer",
+      "format": "int32",
+      "xml": {
+       "attribute": true
+      }
+     }
+    },
+    "xml": {
+     "name": "list"
+    }
+   },
+   "SimpleListWrapperGroupJsonBean": {
+    "type": "object",
+    "properties": {
+     "callback": {
+      "$ref": "#/components/schemas/ListWrapperCallbackGroupJsonBean"
+     },
+     "maxResults": {
+      "type": "integer",
+      "format": "int32",
+      "xml": {
+       "name": "max-results",
+       "attribute": true
+      }
+     },
+     "pagingCallback": {
+      "$ref": "#/components/schemas/ListWrapperCallbackGroupJsonBean"
+     },
+     "size": {
+      "type": "integer",
+      "format": "int32",
+      "xml": {
+       "attribute": true
+      }
+     }
+    },
+    "xml": {
+     "name": "list"
+    }
+   },
+   "StatusCategoryJsonBean": {
+    "type": "object",
+    "properties": {
+     "colorName": {
+      "type": "string"
+     },
+     "id": {
+      "type": "integer",
+      "format": "int64"
+     },
+     "key": {
+      "type": "string"
+     },
+     "name": {
+      "type": "string"
+     },
+     "self": {
+      "type": "string"
+     }
+    }
+   },
+   "StatusJsonBean": {
+    "type": "object",
+    "properties": {
+     "description": {
+      "type": "string"
+     },
+     "iconUrl": {
+      "type": "string"
+     },
+     "id": {
+      "type": "string"
+     },
+     "name": {
+      "type": "string"
+     },
+     "self": {
+      "type": "string"
+     },
+     "statusCategory": {
+      "$ref": "#/components/schemas/StatusCategoryJsonBean"
+     },
+     "statusColor": {
+      "type": "string"
+     }
+    }
+   },
+   "TransitionBean": {
+    "type": "object",
+    "properties": {
+     "description": {
+      "type": "string"
+     },
+     "fields": {
+      "type": "object",
+      "additionalProperties": {
+       "$ref": "#/components/schemas/FieldMetaBean"
+      }
+     },
+     "id": {
+      "type": "string"
+     },
+     "name": {
+      "type": "string"
+     },
+     "opsbarSequence": {
+      "type": "integer",
+      "format": "int32"
+     },
+     "to": {
+      "$ref": "#/components/schemas/StatusJsonBean"
+     }
+    }
+   },
+   "TransitionsMetaBean": {
+    "type": "object",
+    "properties": {
+     "transitions": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/TransitionBean"
+      }
+     }
+    }
+   },
+   "UserBean": {
+    "type": "object",
+    "properties": {
+     "active": {
+      "type": "boolean"
+     },
+     "applicationRoles": {
+      "$ref": "#/components/schemas/SimpleListWrapperApplicationRoleBean"
+     },
+     "avatarUrls": {
+      "type": "object",
+      "additionalProperties": {
+       "type": "string",
+       "format": "uri"
+      }
+     },
+     "deleted": {
+      "type": "boolean"
+     },
+     "displayName": {
+      "type": "string"
+     },
+     "emailAddress": {
+      "type": "string"
+     },
+     "expand": {
+      "type": "string",
+      "xml": {
+       "attribute": true
+      }
+     },
+     "groups": {
+      "$ref": "#/components/schemas/SimpleListWrapperGroupJsonBean"
+     },
+     "key": {
+      "type": "string"
+     },
+     "lastLoginTime": {
+      "type": "string"
+     },
+     "locale": {
+      "type": "string"
+     },
+     "name": {
+      "type": "string"
+     },
+     "self": {
+      "type": "string",
+      "format": "uri"
+     },
+     "timeZone": {
+      "type": "string"
+     }
+    },
+    "xml": {
+     "name": "user"
+    }
+   },
+   "UserJsonBean": {
+    "type": "object",
+    "properties": {
+     "active": {
+      "type": "boolean"
+     },
+     "avatarUrls": {
+      "type": "object",
+      "additionalProperties": {
+       "type": "string"
+      }
+     },
+     "displayName": {
+      "type": "string"
+     },
+     "emailAddress": {
+      "type": "string"
+     },
+     "key": {
+      "type": "string"
+     },
+     "name": {
+      "type": "string"
+     },
+     "self": {
+      "type": "string"
+     },
+     "timeZone": {
+      "type": "string"
+     }
+    }
+   },
+   "VisibilityJsonBean": {
+    "type": "object",
+    "properties": {
+     "type": {
+      "type": "string",
+      "enum": [
+       "group",
+       "role"
+      ]
+     },
+     "value": {
+      "type": "string"
+     }
+    }
+   }
+  }
+ }
+}
