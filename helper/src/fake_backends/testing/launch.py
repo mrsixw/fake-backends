@@ -21,7 +21,7 @@ import subprocess
 import tempfile
 import time
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
@@ -91,18 +91,27 @@ def start_fake(
     image: str | None = None,
     mode: Mode | str | None = None,
     source: str | os.PathLike[str] | None = None,
+    env: Mapping[str, str] | None = None,
     startup_timeout: float = DEFAULT_STARTUP_TIMEOUT_SECONDS,
 ) -> RunningFake:
-    """Start ``backend`` and return it once ``/healthz`` answers."""
+    """Start ``backend`` and return it once ``/healthz`` answers.
+
+    ``env`` configures the fake, for example ``{"FAKE_JIRA_MODE": "server"}``.
+    """
     chosen = _resolve_mode(mode)
+    extra = dict(env or {})
     if chosen is Mode.PROCESS:
-        return _start_process(backend, source=source, startup_timeout=startup_timeout)
+        return _start_process(
+            backend, source=source, env=extra, startup_timeout=startup_timeout
+        )
     if image is None:
         raise FakeStartError(
             f"container mode needs an image for {backend!r}; "
             f"pass image=, or set {MODE_ENV}={Mode.PROCESS} to run from source"
         )
-    return _start_container(backend, image=image, startup_timeout=startup_timeout)
+    return _start_container(
+        backend, image=image, env=extra, startup_timeout=startup_timeout
+    )
 
 
 def _resolve_mode(mode: Mode | str | None) -> Mode:
@@ -140,7 +149,7 @@ def _wait_healthy(
 
 
 def _start_container(
-    backend: str, *, image: str, startup_timeout: float
+    backend: str, *, image: str, env: dict[str, str], startup_timeout: float
 ) -> RunningFake:
     runtime = detect_runtime()
     name = f"fake-{backend}-{uuid.uuid4().hex[:8]}"
@@ -154,7 +163,7 @@ def _start_container(
             name=name,
             host_port=host_port,
             container_port=CONTAINER_PORT,
-            env={"FAKE_BACKEND": backend},
+            env={**env, "FAKE_BACKEND": backend},
         )
         client = _reach_container(runtime, name, host_port, startup_timeout)
         started = True
@@ -216,6 +225,7 @@ def _start_process(
     backend: str,
     *,
     source: str | os.PathLike[str] | None,
+    env: dict[str, str],
     startup_timeout: float,
 ) -> RunningFake:
     checkout = source if source is not None else os.environ.get(SOURCE_ENV)
@@ -237,6 +247,7 @@ def _start_process(
         + ["python", "-m", "fake_backends.server"],
         env={
             **os.environ,
+            **env,
             "FAKE_BACKEND": backend,
             "FAKE_HOST": _LOOPBACK,
             "FAKE_PORT": str(port),

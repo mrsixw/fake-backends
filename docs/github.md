@@ -44,7 +44,7 @@ Queries run on graphql-core against [`schema.graphql`](../src/fake_backends/serv
 | `GET` and `POST /repos/{o}/{r}/issues/{n}/comments` | |
 | `GET /repos/{o}/{r}/releases/latest` | The newest published, non-prerelease release |
 
-Every REST response body is validated in the tests against [GitHub's OpenAPI description](https://github.com/github/rest-api-description) (`tests/github/openapi_subset.json`, made by `utils/trim_github_openapi.py`).
+Every REST response body is validated in the tests against [GitHub's OpenAPI description](https://github.com/github/rest-api-description) (`tests/github/openapi_subset.json`, made by `utils/trim_openapi.py github`).
 
 ## Search syntax
 

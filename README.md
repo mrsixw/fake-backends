@@ -4,14 +4,14 @@ Container-hosted fake **GitHub**, **JIRA** and **Jenkins** APIs with fault injec
 
 Each fake serves the API calls a real tool makes. It can be seeded with data, told to fail on purpose, and asked which requests it received. End-to-end suites can then drive a real built binary through both its happy paths and its failure paths: rate limits, 5xx responses, timeouts, dropped connections and malformed bodies.
 
-> **Status:** the shared server core, the image pipeline, the test helper and fake-github are built. fake-jira and fake-jenkins are tracked in this repo's issues.
+> **Status:** the shared server core, the image pipeline, the test helper, fake-github and fake-jira are built. fake-jenkins is tracked in this repo's issues.
 
 ## Images
 
 | Image | Serves | Issue |
 |---|---|---|
 | `fake-github` | REST and GraphQL: [docs/github.md](docs/github.md) | [issue 2](https://github.com/mrsixw/fake-backends/issues/2) |
-| `fake-jira` | Cloud v3 and Server v2 modes | [issue 3](https://github.com/mrsixw/fake-backends/issues/3) |
+| `fake-jira` | Cloud v3 and Server v2 modes: [docs/jira.md](docs/jira.md) | [issue 3](https://github.com/mrsixw/fake-backends/issues/3) |
 | `fake-jenkins` | Jenkins core, plus Lockable Resources | [issue 4](https://github.com/mrsixw/fake-backends/issues/4) |
 
 All three are built on a shared core ([issue 1](https://github.com/mrsixw/fake-backends/issues/1)):
@@ -19,7 +19,7 @@ All three are built on a shared core ([issue 1](https://github.com/mrsixw/fake-b
 - multi-arch images published to GHCR;
 - the `fake_backends.testing` pytest helper, documented below.
 
-A nightly conformance check ([issue 5](https://github.com/mrsixw/fake-backends/issues/5)) compares the fakes with real GitHub and Jenkins.
+A nightly conformance check ([issue 5](https://github.com/mrsixw/fake-backends/issues/5)) compares the fakes with real GitHub and Jenkins. JIRA has no free, stable real instance to compare against, so fake-jira's fidelity check is Atlassian's published OpenAPI specs instead: every response its tests see is validated against them ([docs/jira.md](docs/jira.md#fidelity)).
 
 ## Control API
 
@@ -119,6 +119,7 @@ def test_rate_limited(fake_github, run_cli):
 ```
 
 - **Lifetime:** each fake starts once per session and is reset before every test, then reseeded if `seed` was given, or loaded with one of its ready-made seeds if `fixture` was (for example `fixture="breakfast-fixtures"`). At the end of the session it is stopped and removed. If any test failed, its logs are printed first.
+- **Configuring a fake:** `env=` sets its environment, for example `fake_fixture("jira", ..., env={"FAKE_JIRA_MODE": "server"})`.
 - **The client** (`FakeClient`) has `seed()`, `load_fixture()`, `fixtures()`, `reset()`, `add_fault()`, `faults()`, `remove_fault()`, `clear_faults()`, `requests()`, `healthy()` and `url()`. A refused call raises `FakeControlError` with the fake's reason.
 - **Without pytest:** `start_fake(backend, image=...)` returns a `RunningFake` with a `client`, `logs()` and `stop()`.
 

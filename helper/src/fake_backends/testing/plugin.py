@@ -34,7 +34,9 @@ from fake_backends.testing.launch import (
 
 __all__ = ["FakePool", "fake_backends_pool", "fake_fixture"]
 
-_PoolKey = tuple[str, str | None, str | None, str | None, float]
+_PoolKey = tuple[
+    str, str | None, str | None, str | None, tuple[tuple[str, str], ...], float
+]
 
 
 class FakePool:
@@ -50,6 +52,7 @@ class FakePool:
         image: str | None,
         mode: Mode | str | None,
         source: str | os.PathLike[str] | None,
+        env: Mapping[str, str] | None,
         startup_timeout: float,
     ) -> RunningFake:
         key = (
@@ -57,6 +60,7 @@ class FakePool:
             image,
             None if mode is None else str(mode),
             None if source is None else os.fspath(source),
+            tuple(sorted((env or {}).items())),
             startup_timeout,
         )
         if key not in self._running:
@@ -65,12 +69,18 @@ class FakePool:
                 image=image,
                 mode=mode,
                 source=source,
+                env=env,
                 startup_timeout=startup_timeout,
             )
         return self._running[key]
 
     def logs(self) -> dict[str, str]:
-        return {fake.backend: fake.logs() for fake in self._running.values()}
+        """Each fake's logs, labelled with its backend and any env it was given."""
+        labelled = {}
+        for key, fake in self._running.items():
+            env = " ".join(f"{k}={v}" for k, v in key[4])
+            labelled[f"{fake.backend} {env}".strip()] = fake.logs()
+        return labelled
 
     def stop_all(self) -> None:
         for fake in self._running.values():
@@ -108,6 +118,7 @@ def fake_fixture(
     source: str | os.PathLike[str] | None = None,
     seed: Mapping[str, Any] | None = None,
     fixture: str | None = None,
+    env: Mapping[str, str] | None = None,
     startup_timeout: float = DEFAULT_STARTUP_TIMEOUT_SECONDS,
     name: str | None = None,
 ) -> Any:
@@ -116,6 +127,7 @@ def fake_fixture(
     Assign it to a module-level name in a conftest.py; that name is the
     fixture's name unless ``name`` is given. After every reset the fake loads
     ``fixture`` (one of its ready-made seeds) or ``seed``, if either is given.
+    ``env`` configures the fake, for example ``{"FAKE_JIRA_MODE": "server"}``.
     """
     if seed is not None and fixture is not None:
         raise ValueError("give a fake either seed= or fixture=, not both")
@@ -127,6 +139,7 @@ def fake_fixture(
             image=image,
             mode=mode,
             source=source,
+            env=env,
             startup_timeout=startup_timeout,
         )
         fake.client.reset()
