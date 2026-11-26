@@ -32,6 +32,18 @@ jobs:
       - uses: astral-sh/setup-uv@v10.4.0
       - run: make test
 
+  # The test helper on the oldest Python the consumers run, and the newest.
+  helper:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.14"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.4.0
+      - run: make helper-test HELPER_PYTHON=${{ matrix.python }}
+
   # The release scripts, against a throwaway repo and the pinned git-mkver.
   bats:
     runs-on: ubuntu-latest
@@ -75,6 +87,14 @@ jobs:
           build-args: |
             BACKEND=${{ matrix.backend }}
       - run: utils/smoke_test_image.sh "${{ matrix.image }}:ci"
+      # The helper's container mode, against the image just built.
+      - if: matrix.backend == 'core'
+        uses: astral-sh/setup-uv@v10.4.0
+      - if: matrix.backend == 'core'
+        working-directory: helper
+        env:
+          FAKE_BACKENDS_TEST_IMAGE: ${{ matrix.image }}:ci
+        run: uv run --python 3.11 pytest -v tests/test_container.py
 
   # What version would merging this release? Printed on every pull request,
   # so a surprise major bump is seen before the merge, not after it.
@@ -94,7 +114,7 @@ jobs:
 
   plan:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    needs: [lint, test, bats, matrix, image]
+    needs: [lint, test, helper, bats, matrix, image]
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.next.outputs.version }}

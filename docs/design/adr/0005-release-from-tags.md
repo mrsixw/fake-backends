@@ -28,6 +28,6 @@ fake-backends has no version file to keep current. Its products are images, and 
 
 - **Each new image needs a one-time switch to public.** A new GHCR package can start out private, and GitHub has no API to change that. The release stops before announcing anything and prints the package's settings link; make it public there and re-run the job.
 - fake-backends needs no `GH_TOKEN` secret. Its entry in terraform-github's `gh_token_secret_repos` can go.
-- `pyproject.toml` keeps `version = "0.0.0"`. The server is never published to PyPI. The test helper ([issue 8](https://github.com/mrsixw/fake-backends/issues/8)) will need its version from the tag too, for example through hatch-vcs.
+- `pyproject.toml` keeps `version = "0.0.0"`. The server is never published to PyPI. The test helper takes its version from the same tags through hatch-vcs, and consumers install it from a tag.
 - A release cut while no backend is marked `published` in the registry would have no images, so the workflow skips the release entirely until the first fake ships.
 - A failed release after the images are pushed leaves images without a release. They are tagged with a version that has no git tag yet, and the re-run overwrites them with the same version.

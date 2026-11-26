@@ -1,0 +1,60 @@
+[project]
+name = "fake-backends-testing"
+dynamic = ["version"]
+description = "pytest fixtures and a control-API client for the fake-backends images"
+readme = "README.md"
+license = "MIT"
+# The consumers' test environments, not the servers', set this floor. It must
+# not rise past the oldest consumer's Python: see docs/design/adr/0003.
+requires-python = ">=3.11"
+dependencies = [
+    # The floor is the current major rather than the newest release: this
+    # installs into the consumers' environments, which lock pytest 9.0 to 9.1.
+    "pytest>=9.0",
+]
+
+# Loaded by pytest as soon as the helper is installed, before any conftest.py,
+# so consumers need no pytest_plugins line. It only defines a lazy session
+# fixture: nothing starts unless a test asks for a fake.
+[project.entry-points.pytest11]
+fake_backends = "fake_backends.testing.plugin"
+
+[dependency-groups]
+dev = [
+    "black>=26.10.1",
+    "ruff>=0.17.6",
+]
+
+[build-system]
+requires = ["hatchling>=1.33", "hatch-vcs>=0.5"]
+build-backend = "hatchling.build"
+
+# The version is the repo's latest v* tag, the same one a release puts on the
+# images, so consumers pin the helper and the images to one release.
+[tool.hatch.version]
+source = "vcs"
+raw-options = { root = "..", tag_regex = "^v(?P<version>\\d+\\.\\d+\\.\\d+)$", fallback_version = "0.0.0" }
+
+[tool.hatch.build.targets.wheel]
+# A namespace package: fake_backends has no __init__.py, so this distribution
+# and the server's can both provide part of it. See ADR 0003.
+packages = ["src/fake_backends"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+# Ruff reads the nearest pyproject.toml, so this keeps 3.12+ syntax out of the
+# helper even though the repo root targets 3.14.
+target-version = "py311"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "PLR2004"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["PLR2004"]
+
+[tool.black]
+line-length = 88
+target-version = ["py311"]
