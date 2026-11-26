@@ -124,3 +124,12 @@ def test_value_lists_are_compared_in_order():
     assert _problems(real, fake, rules) == [
         "`jobs[].name`: real ['a', 'b'], fake ['b', 'a']"
     ]
+
+
+def test_optional_fields_may_be_on_either_side():
+    rules = Rules(optional=["disk_usage"])
+    assert _problems({"body": {}}, {"body": {"disk_usage": 0}}, rules) == []
+    assert _problems({"body": {"disk_usage": 0}}, {"body": {}}, rules) == []
+    assert _problems(
+        {"body": {"disk_usage": 0}}, {"body": {"disk_usage": "x"}}, rules
+    ) == ["`disk_usage`: real number, fake string"]

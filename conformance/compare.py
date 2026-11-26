@@ -91,12 +91,18 @@ class Rules:
     volatile: list[str] = field(default_factory=list)
     # Fields whose values must be equal.
     values: list[str] = field(default_factory=list)
+    # Fields either side may have or lack, such as those a token's scope
+    # decides; their types are still compared when both have them.
+    optional: list[str] = field(default_factory=list)
 
     def _matches(self, patterns: Iterable[str], path: str) -> bool:
         return any(_pattern(p).match(path) for p in patterns)
 
     def ignored_absence(self, path: str) -> bool:
-        return self._matches(self.not_modelled, path)
+        return self._matches([*self.not_modelled, *self.optional], path)
+
+    def ignored_presence(self, path: str) -> bool:
+        return self._matches(self.optional, path)
 
     def ignored_type(self, path: str) -> bool:
         return self._matches(self.volatile, path)
@@ -107,6 +113,7 @@ class Rules:
             not_modelled=[p for r in rules for p in r.not_modelled],
             volatile=[p for r in rules for p in r.volatile],
             values=[p for r in rules for p in r.values],
+            optional=[p for r in rules for p in r.optional],
         )
 
     @classmethod
@@ -116,6 +123,7 @@ class Rules:
             not_modelled=list(raw.get("not_modelled", [])),
             volatile=list(raw.get("volatile", [])),
             values=list(raw.get("values", [])),
+            optional=list(raw.get("optional", [])),
         )
 
 
@@ -169,6 +177,8 @@ def compare(
         ):
             found.append(Difference(path, "missing from the fake"))
     for path in sorted(fake_shape.keys() - real_shape.keys()):
+        if rules.ignored_presence(path):
+            continue
         if not _parent_absent(path, fake_shape, real_shape):
             found.append(Difference(path, "the fake has it; the real service does not"))
     for path in sorted(real_shape.keys() & fake_shape.keys()):

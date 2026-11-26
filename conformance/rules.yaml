@@ -6,6 +6,8 @@
 #   volatile:     fields whose type or nullability depends on the real
 #                 account or the moment, so only their presence is compared
 #   values:       fields the seed fixes, whose values must be equal
+#   optional:     fields either side may have or lack, such as those a
+#                 token's scope decides
 #
 # Each entry says why. A new difference is a fake to fix, unless the reason
 # for excluding it would be as good as these.
@@ -18,6 +20,16 @@ github:
       not_modelled: [notification_email, plan]
       # Profile fields of whoever owns the workflow's token.
       volatile: [name, location, hireable, bio, blog, company, email]
+      # The private-user fields: GitHub sends them only to a token with the
+      # user scope, so the real side has them or not by token. Seen both
+      # ways: a local gh token got them, the workflow's GH_TOKEN did not.
+      optional:
+        - collaborators
+        - disk_usage
+        - owned_private_repos
+        - private_gists
+        - total_private_repos
+        - two_factor_authentication
     open pull:
       values: &pull_values
         - number

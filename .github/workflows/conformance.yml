@@ -50,6 +50,11 @@ jobs:
       - uses: actions/checkout@v7
         with:
           repository: mrsixw/jeeves
+          # Pinned, like any dependency. This is the head of jeeves PR #134,
+          # which adds the Lockable Resources plugin, its resources and the
+          # lock-holder job to the fixture that fake-jenkins' jeeves-fixtures
+          # mirrors. Move it to a commit on main once that PR merges.
+          ref: 8000bbb0aa595d6516404220f747d8c4ad501b0a
           path: jeeves
       - uses: astral-sh/setup-uv@v10.4.0
       - name: Start the real Jenkins

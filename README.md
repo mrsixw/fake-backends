@@ -180,7 +180,7 @@ Each request is a probe, listed in `conformance/probes.py`. The GraphQL probes a
 
 - **Shapes:** every field's path and JSON type are compared, null included, along with the status and selected headers.
 - **Values:** compared only where the seed fixes them, such as titles, states, counts and job names.
-- **Exclusions:** every deliberate exception lives in `conformance/rules.yaml`, with its reason. That covers a real field the fake leaves out, and a field whose type depends on the real account or instance. A new difference is a fake to fix, unless its reason would be as good as those.
+- **Exclusions:** every deliberate exception lives in `conformance/rules.yaml`, with its reason. That includes fields that only some tokens see. That covers a real field the fake leaves out, and a field whose type depends on the real account or instance. A new difference is a fake to fix, unless its reason would be as good as those.
 
 The job summary lists every difference. To run a comparison locally:
 
@@ -189,7 +189,7 @@ FAKE_BACKEND=github FAKE_PORT=8080 uv run python -m fake_backends.server &
 GITHUB_TOKEN=$(gh auth token) uv run python -m conformance.run github --fake http://127.0.0.1:8080
 ```
 
-For Jenkins, also start jeeves' image (`tests/e2e/docker` in a jeeves checkout), set `JEEVES_DOCKER_DIR` to that directory, and pass `--real` with the instance's URL.
+For Jenkins, also start jeeves' image (`tests/e2e/docker` in a jeeves checkout, at the commit the workflow pins), set `JEEVES_DOCKER_DIR` to that directory, and pass `--real` with the instance's URL.
 
 ## Consumers
 
