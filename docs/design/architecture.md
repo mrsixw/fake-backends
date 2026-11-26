@@ -19,7 +19,7 @@ src/fake_backends/            namespace package: no __init__.py
 │   ├── core.py               CoreBackend: the control API alone, for the image smoke test
 │   ├── __main__.py           the image's entry point, configured by FAKE_* env vars
 │   └── constants.py
-└── testing/                  the pytest helper (issue 8; Python 3.11)
+└── testing/                  the pytest helper: helper/src/, its own project (Python 3.11)
 ```
 
 The split between `server` and `testing` is deliberate: see [ADR 0003](adr/0003-package-split.md).

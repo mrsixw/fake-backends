@@ -4,7 +4,7 @@ Container-hosted fake **GitHub**, **JIRA** and **Jenkins** APIs with fault injec
 
 Each fake serves the API calls a real tool makes. It can be seeded with data, told to fail on purpose, and asked which requests it received. End-to-end suites can then drive a real built binary through both its happy paths and its failure paths: rate limits, 5xx responses, timeouts, dropped connections and malformed bodies.
 
-> **Status:** the shared server core and the image pipeline are built. No fake API is published yet: the work is tracked in this repo's issues.
+> **Status:** the shared server core, the image pipeline and the test helper are built. No fake API is published yet: the work is tracked in this repo's issues.
 
 ## Images
 
@@ -17,7 +17,7 @@ Each fake serves the API calls a real tool makes. It can be seeded with data, to
 All three are built on a shared core ([issue 1](https://github.com/mrsixw/fake-backends/issues/1)):
 - a control API under `/_fake/` for seed state, fault rules and the request journal;
 - multi-arch images published to GHCR;
-- the `fake_backends.testing` pytest helper.
+- the `fake_backends.testing` pytest helper, documented below.
 
 A nightly conformance check ([issue 5](https://github.com/mrsixw/fake-backends/issues/5)) compares the fakes with real GitHub and Jenkins.
 
@@ -74,6 +74,66 @@ Every fake serves these endpoints. Requests to them are never faulted, journaled
 
 Any action also takes `delay_seconds`, which waits before acting.
 
+## Testing helper
+
+`fake-backends-testing` gives a consumer's test suite pytest fixtures that start a fake, reset it before every test, and drive it through the control API. It needs Python 3.11 or later, and imports nothing from the servers.
+
+### Install
+
+Pin it to the same release as the images, as a test dependency:
+
+```toml
+[dependency-groups]
+e2e = [
+    "fake-backends-testing @ git+https://github.com/mrsixw/fake-backends@v0.2.0#subdirectory=helper",
+]
+```
+
+pytest loads the plugin automatically once it is installed.
+
+### Use
+
+Declare each fake in `conftest.py`. The name you assign is the fixture's name:
+
+```python
+from fake_backends.testing import fake_fixture
+
+fake_github = fake_fixture(
+    "github",
+    image="ghcr.io/mrsixw/fake-github:0.2.0@sha256:...",
+    seed={"tokens": {"token-alice": "alice"}},
+)
+```
+
+```python
+def test_rate_limited(fake_github, run_cli):
+    fake_github.add_fault({
+        "match": {"path": "/user"},
+        "action": {"type": "respond", "status": 403,
+                   "headers": {"X-RateLimit-Remaining": "0"}},
+    })
+    result = run_cli("--github-url", fake_github.url())
+    assert [r["path"] for r in fake_github.requests()] == ["/user"]
+```
+
+- **Lifetime:** each fake starts once per session and is reset before every test, then reseeded if `seed` was given. At the end of the session it is stopped and removed. If any test failed, its logs are printed first.
+- **The client** (`FakeClient`) has `seed()`, `reset()`, `add_fault()`, `faults()`, `remove_fault()`, `clear_faults()`, `requests()`, `healthy()` and `url()`. A refused call raises `FakeControlError` with the fake's reason.
+- **Without pytest:** `start_fake(backend, image=...)` returns a `RunningFake` with a `client`, `logs()` and `stop()`.
+
+### Container runtimes
+
+Container mode, the default, uses docker if it answers, otherwise Apple's `container`. Docker comes first so that local runs match CI. A runtime that is installed but not running gives a `RuntimeUnavailable` naming the fix (`is Docker running?`, `run container system start`), rather than a timeout. On Macs where Apple's published ports don't forward, the helper reaches the container on its own address instead.
+
+### Process mode
+
+To work on a fake and a consumer side by side, run the server from a fake-backends checkout instead of an image:
+
+```bash
+FAKE_BACKENDS_MODE=process FAKE_BACKENDS_SOURCE=~/git_repos/fake-backends make e2e
+```
+
+This needs `uv`. The fixture runs `uv run python -m fake_backends.server` from that checkout.
+
 ## Development
 
 ```bash
@@ -81,6 +141,8 @@ make format   # black, then ruff --fix
 make lint     # ruff, black --check, shellcheck and actionlint
 make test     # pytest against a real uvicorn server
 make bats     # the release scripts, with the pinned git-mkver
+make helper-test       # the test helper on Python 3.11 (HELPER_PYTHON=3.14 for the newest)
+make helper-container  # the helper against a real core image
 ```
 
 ### Building and running an image

@@ -1,4 +1,4 @@
-.PHONY: sync format lint shellcheck actionlint test bats image smoke
+.PHONY: sync format lint shellcheck actionlint test bats image smoke helper-test helper-container
 
 # Pinned, and run through uvx, so CI and a laptop run the same version with
 # nothing to install by hand.
@@ -19,10 +19,12 @@ sync:
 format: sync
 	uv run black .
 	uv run ruff check --fix .
+	cd helper && uv run black . && uv run ruff check --fix .
 
 lint: sync shellcheck actionlint
 	uv run ruff check .
 	uv run black --check .
+	cd helper && uv run ruff check . && uv run black --check .
 
 shellcheck:
 	uvx --from shellcheck-py==$(SHELLCHECK_VERSION) shellcheck -x $(SHELL_SOURCES)
@@ -39,6 +41,19 @@ bats: $(MKVER)
 
 $(MKVER):
 	INSTALL_DIR=.tools/bin utils/install_git_mkver.sh
+
+# The test helper is its own project on Python 3.11 (ADR 0003). Its tests run
+# the server from this checkout in process mode. HELPER_PYTHON picks another
+# interpreter, as CI does to test 3.14 as well.
+HELPER_PYTHON ?= 3.11
+
+helper-test:
+	cd helper && uv run --python $(HELPER_PYTHON) pytest -v
+
+# The helper against a real core image, under docker or Apple's container.
+helper-container:
+	$(MAKE) image BACKEND=core
+	cd helper && FAKE_BACKENDS_TEST_IMAGE=fake-core:dev uv run --python $(HELPER_PYTHON) pytest -v tests/test_container.py
 
 image:
 	$(RUNTIME) build --build-arg BACKEND=$(BACKEND) -t fake-$(BACKEND):dev .

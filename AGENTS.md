@@ -10,7 +10,8 @@
 - **The servers:** Python >= 3.14, using **uv** (not pip). They run only inside their containers.
 - **The `fake_backends.testing` helper:** Python >= 3.11, because it installs into the consumers' test environments.
   - It must never import server code.
-  - CI tests it under 3.11.
+  - It lives in `helper/`, its own uv project and lock file. Lint and format it with `make lint` and `make format`, which run its own 3.11 config; never run the root's black or ruff on it.
+  - CI tests it under 3.11 and 3.14 (`make helper-test`).
 
 ## Fidelity is the product
 - A fake is only worth having while it answers the way the real service does. Model every response on the real API's documented shape, and on observed behaviour where the two differ.
