@@ -9,6 +9,7 @@ object is rendered deep and then cut down to the fields named.
 from __future__ import annotations
 
 import datetime as dt
+from collections.abc import Iterable
 from typing import Any
 
 from fake_backends.server.jenkins.model import (
@@ -43,6 +44,19 @@ TREE_DEPTH = 4
 _MS_PER_SECOND = 1000
 _HEALTH_WINDOW = 5
 _PERCENT = 100
+_NO_PROGRESS = -1
+_LOAD_SERIES = (
+    "availableExecutors",
+    "busyExecutors",
+    "connectingExecutors",
+    "definedExecutors",
+    "idleExecutors",
+    "onlineExecutors",
+    "queueLength",
+    "totalExecutors",
+)
+_JOB_DISPLAY_ACTION = "org.jenkinsci.plugins.displayurlapi.actions.JobDisplayAction"
+_RUN_DISPLAY_ACTION = "org.jenkinsci.plugins.displayurlapi.actions.RunDisplayAction"
 _LOCKABLE_ROOT_CLASS = (
     "org.jenkins.plugins.lockableresources.actions.LockableResourcesRootAction"
 )
@@ -81,6 +95,11 @@ _VALUE_CLASSES = {
     "choice": "StringParameterValue",
     "password": "PasswordParameterValue",
 }
+
+
+def _by_name(jobs: Iterable[Job]) -> list[Job]:
+    """Jenkins lists items by name, whatever order they were made in."""
+    return sorted(jobs, key=lambda j: j.name.lower())
 
 
 def _value_class(kind: str | None) -> str:
@@ -147,7 +166,12 @@ def _health(item: Job) -> list[dict[str, Any]]:
     ]
 
 
-def _parameters_property(item: Job) -> list[dict[str, Any]]:
+def _parameters_property(item: Job, *, named: bool = True) -> list[dict[str, Any]]:
+    """The job's parameter definitions.
+
+    Jenkins renders them twice: under ``property`` the default value carries
+    the parameter's name, and the copy among ``actions`` leaves it out.
+    """
     if not item.parameters:
         return []
     definitions = []
@@ -156,7 +180,7 @@ def _parameters_property(item: Job) -> list[dict[str, Any]]:
             "_class": f"hudson.model.{_PARAMETER_CLASSES[p.kind]}",
             "defaultParameterValue": {
                 "_class": f"hudson.model.{_VALUE_CLASSES[p.kind]}",
-                "name": p.name,
+                **({"name": p.name} if named else {}),
                 "value": None if p.kind == "password" else p.default,
             },
             "description": p.description,
@@ -193,7 +217,7 @@ def job(state: JenkinsState, base: str, item: Job, depth: int) -> dict[str, Any]
                 if depth > 0
                 else _job_summary(base, child)
             )
-            for child in item.children.values()
+            for child in _by_name(item.children.values())
         ]
         full["primaryView"] = {"_class": "hudson.model.AllView", "name": "All"}
         return full
@@ -222,9 +246,20 @@ def job(state: JenkinsState, base: str, item: Job, depth: int) -> dict[str, Any]
             "queueItem": None,
             "concurrentBuild": False,
             "disabled": item.disabled,
-            "resumeBlocked": False,
+            # Jenkins repeats a job's properties among its actions.
+            "actions": [
+                *_parameters_property(item, named=False),
+                {},
+                {"_class": _JOB_DISPLAY_ACTION},
+            ],
+            "downstreamProjects": [],
+            "upstreamProjects": [],
         }
     )
+    if item.type is JobType.PIPELINE:
+        full["resumeBlocked"] = False
+    else:
+        full.update({"labelExpression": None, "scm": {"_class": "hudson.scm.NullSCM"}})
     for link, test in PERMALINKS.items():
         full[link] = nested(next((b for b in builds if test(b)), None))
     return full
@@ -277,6 +312,7 @@ def build(
             }
         )
     actions.append({"_class": "hudson.model.CauseAction", "causes": b.causes})
+    actions += [{}, {"_class": _RUN_DISPLAY_ACTION}]
     full = {
         **_build_summary(base, item, b),
         "actions": actions,
@@ -296,11 +332,16 @@ def build(
         "inProgress": b.building,
         "culprits": [_culprit(state, base, c) for c in b.culprits],
     }
-    changes = {
-        "_class": "hudson.plugins.git.GitChangeSetList",
-        "items": _change_items(state, base, b),
-        "kind": "git",
-    }
+    full["builtOn"] = ""  # the built-in node
+    changes = (
+        {
+            "_class": "hudson.plugins.git.GitChangeSetList",
+            "items": _change_items(state, base, b),
+            "kind": "git",
+        }
+        if b.changes
+        else {"_class": "hudson.scm.EmptyChangeLogSet", "items": [], "kind": None}
+    )
     if item.type is JobType.PIPELINE:
         full["changeSets"] = [changes] if b.changes else []
     else:
@@ -319,7 +360,7 @@ def root(state: JenkinsState, base: str, depth: int) -> dict[str, Any]:
         "description": state.description,
         "jobs": [
             job(state, base, j, depth - 1) if depth > 0 else _job_summary(base, j)
-            for j in state.jobs.values()
+            for j in _by_name(state.jobs.values())
         ],
         "overallLoad": {},
         "primaryView": {
@@ -392,6 +433,13 @@ _DEFAULT_DISK_GIB = 50
 _DEFAULT_SWAP_GIB = 2
 _DEFAULT_TEMP_GIB = 10
 _DEFAULT_RESPONSE_MS = 10
+_DEFAULT_MEMORY_GIB = 4
+_TOTAL_DISK_GIB = 100
+# Jenkins' own defaults: a node goes offline under 1 GiB free, warns under 2.
+_DISK_THRESHOLD_GIB = 1
+_DISK_WARNING_GIB = 2
+# When the monitors last ran: fixed, like every other fake timestamp.
+_MONITOR_TIMESTAMP = 1767225600000
 _MONITOR_DEFAULTS = {
     "hudson.node_monitors.ArchitectureMonitor": "Linux (amd64)",
     "hudson.node_monitors.ClockMonitor": {
@@ -402,21 +450,59 @@ _MONITOR_DEFAULTS = {
         "_class": "hudson.node_monitors.DiskSpaceMonitorDescriptor$DiskSpace",
         "path": "/var/jenkins_home",
         "size": _DEFAULT_DISK_GIB * _GIB,
+        "totalSize": _TOTAL_DISK_GIB * _GIB,
+        "threshold": _DISK_THRESHOLD_GIB * _GIB,
+        "warningThreshold": _DISK_WARNING_GIB * _GIB,
+        "timestamp": _MONITOR_TIMESTAMP,
     },
     "hudson.node_monitors.ResponseTimeMonitor": {
         "_class": "hudson.node_monitors.ResponseTimeMonitor$Data",
         "average": _DEFAULT_RESPONSE_MS,
+        "timestamp": _MONITOR_TIMESTAMP,
     },
     "hudson.node_monitors.SwapSpaceMonitor": {
         "_class": "hudson.node_monitors.SwapSpaceMonitor$MemoryUsage2",
         "availableSwapSpace": _DEFAULT_SWAP_GIB * _GIB,
+        "totalSwapSpace": _DEFAULT_SWAP_GIB * _GIB,
+        "availablePhysicalMemory": _DEFAULT_MEMORY_GIB * _GIB,
+        "totalPhysicalMemory": _DEFAULT_MEMORY_GIB * _GIB,
     },
     "hudson.node_monitors.TemporarySpaceMonitor": {
         "_class": "hudson.node_monitors.DiskSpaceMonitorDescriptor$DiskSpace",
         "path": "/tmp",
         "size": _DEFAULT_TEMP_GIB * _GIB,
+        "totalSize": _TOTAL_DISK_GIB * _GIB,
+        "threshold": _DISK_THRESHOLD_GIB * _GIB,
+        "warningThreshold": _DISK_WARNING_GIB * _GIB,
+        "timestamp": _MONITOR_TIMESTAMP,
     },
 }
+
+
+def _load_statistics() -> dict[str, Any]:
+    return {
+        "_class": "hudson.model.Label$1",
+        **{name: {} for name in _LOAD_SERIES},
+    }
+
+
+def _label(state: JenkinsState, name: str) -> dict[str, Any]:
+    nodes = [n for n in state.nodes.values() if name in n.labels]
+    total = sum(n.executors for n in nodes if not n.offline)
+    return {
+        "actions": [],
+        "busyExecutors": 0,
+        "clouds": [],
+        "description": None,
+        "idleExecutors": total,
+        "loadStatistics": {"_class": "hudson.model.Label$1"},
+        "name": name,
+        "nodes": [{"_class": "hudson.model.Hudson", "nodeName": ""}],
+        "offline": not total,
+        "tiedJobs": [],
+        "totalExecutors": total,
+        "propertiesList": [],
+    }
 
 
 def _computer(state: JenkinsState, node: Node, depth: int) -> dict[str, Any]:
@@ -430,11 +516,22 @@ def _computer(state: JenkinsState, node: Node, depth: int) -> dict[str, Any]:
             else "hudson.slaves.SlaveComputer"
         ),
         "actions": [],
-        "assignedLabels": [{"name": label} for label in node.labels],
+        "assignedLabels": [_label(state, label) for label in node.labels],
         "description": node.description,
         "displayName": "Built-In Node" if built_in else node.name,
-        "executors": [{}] * node.executors,
+        "executors": [
+            {
+                "currentExecutable": None,
+                "idle": True,
+                "likelyStuck": False,
+                "number": n,
+                "progress": _NO_PROGRESS,
+            }
+            for n in range(node.executors)
+        ],
         "icon": "symbol-computer",
+        "iconClassName": "symbol-computer",
+        "loadStatistics": _load_statistics(),
         "idle": busy == 0,
         "jnlpAgent": not built_in and node.host is None,
         "launchSupported": not built_in,
@@ -474,7 +571,10 @@ def me(state: JenkinsState, base: str, identity: str) -> dict[str, Any]:
         "fullName": user.full_name,
         "id": user.id,
         "property": [
-            {"_class": "hudson.tasks.Mailer$UserProperty", "address": user.email}
+            {"_class": "jenkins.security.ApiTokenProperty"},
+            {"_class": "hudson.tasks.Mailer$UserProperty", "address": user.email},
+            {"_class": "hudson.search.UserSearchProperty", "insensitiveSearch": True},
+            {"_class": "hudson.model.TimeZoneProperty"},
         ],
     }
 
@@ -483,7 +583,6 @@ def _resource(r: Resource) -> dict[str, Any]:
     reserved_at = r.reserved_at.isoformat() if r.reserved_at else None
     build_name = r.locked_by
     return {
-        "_class": "org.jenkins.plugins.lockableresources.LockableResource",
         "buildName": build_name,
         "description": r.description,
         "ephemeral": r.ephemeral,
@@ -494,6 +593,8 @@ def _resource(r: Resource) -> dict[str, Any]:
         "locked": r.locked_by is not None,
         "name": r.name,
         "note": r.note,
+        "lockReason": "",
+        "properties": [],
         "reserved": r.reserved_by is not None,
         "reservedBy": r.reserved_by,
         "reservedByEmail": r.reserved_by_email,

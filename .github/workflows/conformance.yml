@@ -1,0 +1,76 @@
+name: Conformance
+
+# Compares the fakes with the real services, nightly. It never gates a pull
+# request. It runs on one only when the comparison itself changes, so a change
+# to the probes or the rules is seen working before it merges.
+on:
+  schedule:
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "conformance/**"
+      - ".github/workflows/conformance.yml"
+
+permissions:
+  contents: read
+
+env:
+  FAKE_PORT: "8080"
+  JENKINS_PORT: "8081"
+  # How long a local server gets to answer before the job gives up.
+  STARTUP_SECONDS: "60"
+
+jobs:
+  github:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.4.0
+      - name: Start fake-github
+        run: |
+          FAKE_BACKEND=github FAKE_HOST=127.0.0.1 uv run python -m fake_backends.server &
+          for _ in $(seq "${STARTUP_SECONDS}"); do
+            curl -fsS "http://127.0.0.1:${FAKE_PORT}/healthz" && exit 0
+            sleep 1
+          done
+          exit 1
+      - name: Compare with GitHub
+        env:
+          # A personal token: GET /user refuses the workflow's own. It only
+          # reads public data here.
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: uv run python -m conformance.run github --fake "http://127.0.0.1:${FAKE_PORT}"
+
+  jenkins:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # jeeves' end-to-end Jenkins: its pinned plugins and Configuration-as-Code.
+      - uses: actions/checkout@v7
+        with:
+          repository: mrsixw/jeeves
+          path: jeeves
+      - uses: astral-sh/setup-uv@v10.4.0
+      - name: Start the real Jenkins
+        run: |
+          docker build -t jeeves-jenkins jeeves/tests/e2e/docker
+          docker run -d --name jenkins -p "127.0.0.1:${JENKINS_PORT}:8080" jeeves-jenkins
+      - name: Start fake-jenkins
+        run: |
+          FAKE_BACKEND=jenkins FAKE_HOST=127.0.0.1 uv run python -m fake_backends.server &
+          for _ in $(seq "${STARTUP_SECONDS}"); do
+            curl -fsS "http://127.0.0.1:${FAKE_PORT}/healthz" && exit 0
+            sleep 1
+          done
+          exit 1
+      - name: Compare with Jenkins
+        env:
+          JEEVES_DOCKER_DIR: jeeves/tests/e2e/docker
+        run: >-
+          uv run python -m conformance.run jenkins
+          --real "http://127.0.0.1:${JENKINS_PORT}"
+          --fake "http://127.0.0.1:${FAKE_PORT}"
+      - name: Jenkins logs
+        if: failure()
+        run: docker logs jenkins
