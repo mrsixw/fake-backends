@@ -3,7 +3,8 @@
 ## Project Overview
 - **fake-backends** publishes container images that fake the GitHub, JIRA and Jenkins APIs for end-to-end tests. Each fake can be seeded, can have faults injected, and records the requests it receives.
 - Consumers: [breakfast](https://github.com/mrsixw/breakfast), [gh-snitch](https://github.com/mrsixw/gh-snitch), [jeeves](https://github.com/mrsixw/jeeves) and [grind](https://github.com/mrsixw/grind).
-- The design lives in this repo's issues until the code exists: [issue 1](https://github.com/mrsixw/fake-backends/issues/1) (core), [issue 2](https://github.com/mrsixw/fake-backends/issues/2) (fake-github), [issue 3](https://github.com/mrsixw/fake-backends/issues/3) (fake-jira), [issue 4](https://github.com/mrsixw/fake-backends/issues/4) (fake-jenkins) and [issue 5](https://github.com/mrsixw/fake-backends/issues/5) (the conformance check).
+- **Design docs:** [docs/design/architecture.md](docs/design/architecture.md) explains the server core, and [docs/design/adr/](docs/design/adr/) records why its less obvious choices were made. Read the ADRs before changing the connection abort, fault ordering or counting, or the package layout. Record a new decision of that weight as a new ADR in the same PR.
+- Work not yet built is designed in this repo's issues: [issue 1](https://github.com/mrsixw/fake-backends/issues/1) (core), [issue 2](https://github.com/mrsixw/fake-backends/issues/2) (fake-github), [issue 3](https://github.com/mrsixw/fake-backends/issues/3) (fake-jira), [issue 4](https://github.com/mrsixw/fake-backends/issues/4) (fake-jenkins) and [issue 5](https://github.com/mrsixw/fake-backends/issues/5) (the conformance check).
 
 ## Environment
 - **The servers:** Python >= 3.14, using **uv** (not pip). They run only inside their containers.

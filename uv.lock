@@ -180,7 +180,7 @@ dev = [
 requires-dist = [
     { name = "pyyaml", specifier = ">=6.0.2" },
     { name = "starlette", specifier = ">=0.47" },
-    { name = "uvicorn", specifier = ">=0.35" },
+    { name = "uvicorn", specifier = ">=0.54" },
 ]
 
 [package.metadata.requires-dev]

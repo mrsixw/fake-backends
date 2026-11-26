@@ -8,7 +8,9 @@ requires-python = ">=3.14"
 dependencies = [
     "pyyaml>=6.0.2",
     "starlette>=0.47",
-    "uvicorn>=0.35",
+    # The connection abort depends on uvicorn's protocol and context handling;
+    # see docs/design/adr/0001-connection-abort.md before lowering this.
+    "uvicorn>=0.54",
 ]
 
 [dependency-groups]
