@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from dataclasses import dataclass
 from http import HTTPStatus
+from pathlib import Path
 from typing import Any
 
 from starlette.responses import JSONResponse, Response
@@ -67,9 +68,20 @@ class Backend(ABC):
         """
         return {}
 
-    def validate_state(self, seed: Mapping[str, Any]) -> None:
-        """Raise ValueError if the backend cannot serve ``seed``."""
-        return None
+    def parse_state(self, data: Mapping[str, Any]) -> Any:
+        """Turn a seed's data into the state the handlers serve.
+
+        ``data`` is every top-level seed key except ``tokens``, and is ``{}``
+        after a reset. Raise ValueError if the backend cannot serve it. The
+        result is what handlers find in ``request.app.state.store.data``, so
+        a backend can parse once and then change it as requests arrive. The
+        default keeps the mapping as it is.
+        """
+        return dict(data)
+
+    def fixtures(self) -> Mapping[str, Path]:
+        """Ready-made seed files, by name, for ``POST /_fake/fixtures/{name}``."""
+        return {}
 
     def supports_hook(self, spec: Mapping[str, Any]) -> bool:
         """Whether a ``hook`` fault action with ``spec`` can be answered."""

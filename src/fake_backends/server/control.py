@@ -7,7 +7,12 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.routing import BaseRoute, Route
 
-from fake_backends.server.constants import CONTROL_PREFIX, HEALTH_PATH
+from fake_backends.server.constants import (
+    CONTROL_PREFIX,
+    HEALTH_PATH,
+    JSON_CONTENT_TYPE,
+    YAML_CONTENT_TYPE,
+)
 from fake_backends.server.faults import RuleError
 from fake_backends.server.store import SeedError, parse_seed
 
@@ -30,10 +35,37 @@ async def _put_state(request: Request) -> Response:
     state = request.app.state
     try:
         seed = parse_seed(await request.body(), request.headers.get("content-type", ""))
-        state.backend.validate_state(seed)
         state.store.load(seed)
     except (SeedError, ValueError) as exc:
         return _error(str(exc))
+    return _no_content()
+
+
+_YAML_SUFFIXES = frozenset({".yaml", ".yml"})
+
+
+async def _list_fixtures(request: Request) -> JSONResponse:
+    return JSONResponse(sorted(request.app.state.backend.fixtures()))
+
+
+async def _load_fixture(request: Request) -> Response:
+    state = request.app.state
+    fixtures = state.backend.fixtures()
+    name = request.path_params["name"]
+    if name not in fixtures:
+        known = ", ".join(sorted(fixtures)) or "none"
+        return JSONResponse(
+            {"error": f"no fixture {name!r}; this fake has: {known}"},
+            status_code=HTTPStatus.NOT_FOUND,
+        )
+    path = fixtures[name]
+    content_type = (
+        YAML_CONTENT_TYPE if path.suffix in _YAML_SUFFIXES else JSON_CONTENT_TYPE
+    )
+    try:
+        state.store.load(parse_seed(path.read_bytes(), content_type))
+    except (SeedError, ValueError) as exc:
+        return _error(f"fixture {name!r}: {exc}")
     return _no_content()
 
 
@@ -81,6 +113,8 @@ def control_routes() -> list[BaseRoute]:
         Route(HEALTH_PATH, _health),
         Route(f"{CONTROL_PREFIX}/state", _put_state, methods=["PUT"]),
         Route(f"{CONTROL_PREFIX}/reset", _reset, methods=["POST"]),
+        Route(f"{CONTROL_PREFIX}/fixtures", _list_fixtures, methods=["GET"]),
+        Route(f"{CONTROL_PREFIX}/fixtures/{{name}}", _load_fixture, methods=["POST"]),
         Route(f"{CONTROL_PREFIX}/faults", _add_fault, methods=["POST"]),
         Route(f"{CONTROL_PREFIX}/faults", _list_faults, methods=["GET"]),
         Route(f"{CONTROL_PREFIX}/faults", _clear_faults, methods=["DELETE"]),

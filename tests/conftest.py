@@ -7,11 +7,12 @@ consumer's binary would.
 
 import threading
 import time
+from collections.abc import Iterator
 
 import pytest
 import requests
 
-from fake_backends.server import build_server, create_app
+from fake_backends.server import Backend, build_server, create_app
 from tests.echo_backend import EchoBackend
 
 LOOPBACK = "127.0.0.1"
@@ -23,9 +24,9 @@ TOKEN = "token-alice"
 IDENTITY = "alice"
 
 
-@pytest.fixture(scope="session")
-def base_url():
-    server = build_server(create_app(EchoBackend()), host=LOOPBACK, port=ANY_FREE_PORT)
+def serve(backend: Backend) -> Iterator[str]:
+    """Run ``backend`` on a real server in a thread, yielding its base URL."""
+    server = build_server(create_app(backend), host=LOOPBACK, port=ANY_FREE_PORT)
     thread = threading.Thread(target=server.run, daemon=True)
     thread.start()
     deadline = time.monotonic() + STARTUP_TIMEOUT_SECONDS
@@ -37,6 +38,12 @@ def base_url():
     yield f"http://{LOOPBACK}:{port}"
     server.should_exit = True
     thread.join(timeout=STARTUP_TIMEOUT_SECONDS)
+
+
+@pytest.fixture(scope="session")
+def base_url():
+    """The echo backend; a test package overrides this to serve its own fake."""
+    yield from serve(EchoBackend())
 
 
 @pytest.fixture(autouse=True)

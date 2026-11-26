@@ -4,13 +4,13 @@ Container-hosted fake **GitHub**, **JIRA** and **Jenkins** APIs with fault injec
 
 Each fake serves the API calls a real tool makes. It can be seeded with data, told to fail on purpose, and asked which requests it received. End-to-end suites can then drive a real built binary through both its happy paths and its failure paths: rate limits, 5xx responses, timeouts, dropped connections and malformed bodies.
 
-> **Status:** the shared server core, the image pipeline and the test helper are built. No fake API is published yet: the work is tracked in this repo's issues.
+> **Status:** the shared server core, the image pipeline, the test helper and fake-github are built. fake-jira and fake-jenkins are tracked in this repo's issues.
 
 ## Images
 
 | Image | Serves | Issue |
 |---|---|---|
-| `fake-github` | REST and GraphQL | [issue 2](https://github.com/mrsixw/fake-backends/issues/2) |
+| `fake-github` | REST and GraphQL: [docs/github.md](docs/github.md) | [issue 2](https://github.com/mrsixw/fake-backends/issues/2) |
 | `fake-jira` | Cloud v3 and Server v2 modes | [issue 3](https://github.com/mrsixw/fake-backends/issues/3) |
 | `fake-jenkins` | Jenkins core, plus Lockable Resources | [issue 4](https://github.com/mrsixw/fake-backends/issues/4) |
 
@@ -28,8 +28,10 @@ Every fake serves these endpoints. Requests to them are never faulted, journaled
 | Endpoint | Purpose |
 |---|---|
 | `GET /healthz` | Returns `{"status": "ok"}` once the fake is up |
-| `PUT /_fake/state` | Load seed data as JSON, or as YAML with `Content-Type: application/yaml`. `tokens` maps each accepted token to an identity; every other key belongs to the backend. Replaces the previous state. |
+| `PUT /_fake/state` | Load seed data as JSON, or as YAML with `Content-Type: application/yaml`. `tokens` maps each accepted token to an identity; every other key belongs to the backend. Replaces the previous state, or changes nothing if the backend refuses the seed (`400`, naming the problem). |
 | `POST /_fake/reset` | Clear the state, the fault rules and the journal |
+| `GET /_fake/fixtures` | The ready-made seeds this fake ships |
+| `POST /_fake/fixtures/{name}` | Load one, replacing the state |
 | `POST /_fake/faults` | Register a fault rule. Returns `201` with its `id`. |
 | `GET /_fake/faults` | List the rules with their `matched` and `fired` counts and whether each is `spent` |
 | `DELETE /_fake/faults` | Remove every rule |
@@ -116,8 +118,8 @@ def test_rate_limited(fake_github, run_cli):
     assert [r["path"] for r in fake_github.requests()] == ["/user"]
 ```
 
-- **Lifetime:** each fake starts once per session and is reset before every test, then reseeded if `seed` was given. At the end of the session it is stopped and removed. If any test failed, its logs are printed first.
-- **The client** (`FakeClient`) has `seed()`, `reset()`, `add_fault()`, `faults()`, `remove_fault()`, `clear_faults()`, `requests()`, `healthy()` and `url()`. A refused call raises `FakeControlError` with the fake's reason.
+- **Lifetime:** each fake starts once per session and is reset before every test, then reseeded if `seed` was given, or loaded with one of its ready-made seeds if `fixture` was (for example `fixture="breakfast-fixtures"`). At the end of the session it is stopped and removed. If any test failed, its logs are printed first.
+- **The client** (`FakeClient`) has `seed()`, `load_fixture()`, `fixtures()`, `reset()`, `add_fault()`, `faults()`, `remove_fault()`, `clear_faults()`, `requests()`, `healthy()` and `url()`. A refused call raises `FakeControlError` with the fake's reason.
 - **Without pytest:** `start_fake(backend, image=...)` returns a `RunningFake` with a `client`, `logs()` and `stop()`.
 
 ### Container runtimes

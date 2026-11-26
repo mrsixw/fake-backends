@@ -14,6 +14,7 @@ __all__ = [
     "TEXT_CONTENT_TYPE",
     "TRUNCATE_KEEP_DIVISOR",
     "UNAUTHORIZED_BODY",
+    "YAML_CONTENT_TYPE",
     "YAML_CONTENT_TYPES",
 ]
 
@@ -29,6 +30,7 @@ DEFAULT_PORT = 8080
 
 JSON_CONTENT_TYPE = "application/json"
 TEXT_CONTENT_TYPE = "text/plain; charset=utf-8"
+YAML_CONTENT_TYPE = "application/yaml"
 YAML_CONTENT_TYPES = frozenset(
     {"application/yaml", "application/x-yaml", "text/yaml", "text/x-yaml"}
 )

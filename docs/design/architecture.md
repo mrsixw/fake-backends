@@ -34,10 +34,11 @@ Each fake (fake-github, fake-jira, fake-jenkins) is a subclass of `Backend` hand
 | `is_public(method, path)` | nothing is public | let anonymous calls through where the real API does |
 | `unauthorized()` | 401 `{"message": "Bad credentials"}` | send the real service's 401 body |
 | `details(request)` | `{}` | expose request facts that fault rules match on and the journal records, such as GraphQL root fields |
-| `validate_state(data)` | accept anything | reject a malformed seed with a 400 |
+| `parse_state(data)` | keep the mapping as it is | parse the seed once into the model the handlers serve (and may change); raise `ValueError` to refuse it with a 400 |
+| `fixtures()` | none | name ready-made seed files for `POST /_fake/fixtures/{name}` |
 | `supports_hook(spec)` / `hook_action(spec, request)` | no hooks | add service-specific faults, such as a GraphQL `errors[]` entry |
 
-Handlers read seed data from `request.app.state.store.data` and the caller from `request.state.identity`.
+Handlers read the parsed state from `request.app.state.store.data` and the caller from `request.state.identity`. A reset parses `{}`, so a backend's empty state is whatever its `parse_state` makes of nothing.
 
 A new fake is registered in `registry.BACKENDS`, with `published=True` once it should be released. That one entry is what the `Dockerfile`'s `BACKEND` argument, the entry point and CI's build matrix (`utils/list_images.py`) all read.
 
@@ -62,7 +63,7 @@ The middleware is plain ASGI, not Starlette middleware: see [ADR 0004](adr/0004-
 
 ## State
 
-One process holds one fake's state in memory: the `Store` (tokens and seed data), the `FaultBook` and the `Journal`. The fault book and journal are lock-protected, so counting and recording stay consistent; the store is replaced in one step by synchronous code on the event loop, so it has no lock. `PUT /_fake/state` replaces the store; `POST /_fake/reset` clears all three. Nothing persists across restarts, so a test suite resets between scenarios rather than restarting the container.
+One process holds one fake's state in memory: the `Store` (tokens and the backend's parsed state), the `FaultBook` and the `Journal`. The fault book and journal are lock-protected, so counting and recording stay consistent; the store is replaced in one step by synchronous code on the event loop, so it has no lock. `PUT /_fake/state` and `POST /_fake/fixtures/{name}` replace the store, all or nothing; `POST /_fake/reset` clears all three. Nothing persists across restarts, so a test suite resets between scenarios rather than restarting the container.
 
 ## Testing the core
 

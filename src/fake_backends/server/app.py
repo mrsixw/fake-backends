@@ -14,7 +14,7 @@ __all__ = ["create_app"]
 
 
 def create_app(backend: Backend) -> Starlette:
-    store = Store()
+    store = Store(parse=backend.parse_state)
     faults = FaultBook()
     journal = Journal()
     app = Starlette(

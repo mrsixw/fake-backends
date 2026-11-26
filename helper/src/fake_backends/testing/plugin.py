@@ -107,15 +107,18 @@ def fake_fixture(
     mode: Mode | str | None = None,
     source: str | os.PathLike[str] | None = None,
     seed: Mapping[str, Any] | None = None,
+    fixture: str | None = None,
     startup_timeout: float = DEFAULT_STARTUP_TIMEOUT_SECONDS,
     name: str | None = None,
 ) -> Any:
     """Make a function-scoped fixture that yields a reset ``FakeClient``.
 
     Assign it to a module-level name in a conftest.py; that name is the
-    fixture's name unless ``name`` is given. ``seed``, if given, is loaded
-    after every reset.
+    fixture's name unless ``name`` is given. After every reset the fake loads
+    ``fixture`` (one of its ready-made seeds) or ``seed``, if either is given.
     """
+    if seed is not None and fixture is not None:
+        raise ValueError("give a fake either seed= or fixture=, not both")
 
     @pytest.fixture(name=name)
     def _fake(fake_backends_pool: FakePool) -> Iterator[FakeClient]:
@@ -127,6 +130,8 @@ def fake_fixture(
             startup_timeout=startup_timeout,
         )
         fake.client.reset()
+        if fixture is not None:
+            fake.client.load_fixture(fixture)
         if seed is not None:
             fake.client.seed(seed)
         yield fake.client

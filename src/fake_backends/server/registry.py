@@ -36,6 +36,7 @@ BACKENDS: dict[str, BackendEntry] = {
     # built and smoke-tested on every PR so the image itself is proven before
     # any fake exists, and is never published.
     "core": BackendEntry("fake_backends.server.core:CoreBackend", published=False),
+    "github": BackendEntry("fake_backends.server.github:GitHubBackend", published=True),
 }
 
 

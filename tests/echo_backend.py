@@ -8,6 +8,7 @@ the backend extension points have something to call.
 import asyncio
 from collections.abc import Mapping
 from http import HTTPStatus
+from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs
 
@@ -17,9 +18,11 @@ from starlette.routing import BaseRoute, Route
 
 from fake_backends.server import Backend, RequestInfo
 
-__all__ = ["EchoBackend", "TEAPOT_HOOK"]
+__all__ = ["FIXTURE", "TEAPOT_HOOK", "EchoBackend"]
 
 TEAPOT_HOOK = "teapot"
+FIXTURE = "hello"
+_FIXTURES = Path(__file__).parent / "fixtures"
 
 
 async def _echo(request: Request) -> JSONResponse:
@@ -63,6 +66,15 @@ class EchoBackend(Backend):
 
     def is_public(self, method: str, path: str) -> bool:
         return path == "/public"
+
+    def parse_state(self, data: Mapping[str, Any]) -> dict[str, Any]:
+        greeting = data.get("greeting")
+        if greeting is not None and not isinstance(greeting, str):
+            raise ValueError("greeting must be a string")
+        return dict(data)
+
+    def fixtures(self) -> Mapping[str, Path]:
+        return {FIXTURE: _FIXTURES / "hello.yaml"}
 
     def details(self, request: RequestInfo) -> dict[str, Any]:
         query = parse_qs(request.query_string)

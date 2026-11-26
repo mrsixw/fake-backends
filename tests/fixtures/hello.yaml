@@ -1,0 +1,3 @@
+tokens:
+  token-fixture: fixture-user
+greeting: hello from a fixture

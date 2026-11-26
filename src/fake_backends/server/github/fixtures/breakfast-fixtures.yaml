@@ -1,0 +1,142 @@
+# The pull requests of mrsixw/breakfast-fixtures, the frozen repository
+# breakfast's live end-to-end suite asserts exact counts against. Copied from
+# GitHub on 2026-11-26; see breakfast's docs/design/testing.md for the
+# inventory and the counts derived from it.
+#
+# Load it with POST /_fake/fixtures/breakfast-fixtures. It accepts the token
+# `token-mrsixw`, which authenticates as mrsixw, the repository's owner.
+tokens:
+  token-mrsixw: mrsixw
+users:
+  - login: mrsixw
+repos:
+  - owner: mrsixw
+    name: breakfast-fixtures
+    archived: true
+    default_branch: main
+    created_at: "2026-08-25T17:50:22Z"
+    pushed_at: "2026-08-25T17:52:03Z"
+    pulls:
+      - number: 1
+        title: "Open PR with no labels"
+        body: "Frozen fixture. Do not modify."
+        state: open
+        draft: false
+        author: mrsixw
+        labels: []
+        head: fixture-1
+        head_sha: 6979952d29d39db1882a82b7628e2e6e5ffc2c46
+        base: main
+        created_at: "2026-08-25T17:51:03Z"
+        updated_at: "2026-08-25T17:51:03Z"
+        additions: 1
+        deletions: 0
+        changed_files: 1
+      - number: 2
+        title: "Open PR labelled bug"
+        body: "Frozen fixture. Do not modify."
+        state: open
+        draft: false
+        author: mrsixw
+        labels: ["bug"]
+        head: fixture-2
+        head_sha: 42a472052d4d7f40f33f2f5709c3749bc185cb00
+        base: main
+        created_at: "2026-08-25T17:51:07Z"
+        updated_at: "2026-08-25T17:51:54Z"
+        additions: 1
+        deletions: 0
+        changed_files: 1
+      - number: 3
+        title: "Open PR labelled enhancement"
+        body: "Frozen fixture. Do not modify."
+        state: open
+        draft: false
+        author: mrsixw
+        labels: ["enhancement"]
+        head: fixture-3
+        head_sha: 183069035315cdd7ad9a56f1132af49c10e0470e
+        base: main
+        created_at: "2026-08-25T17:51:11Z"
+        updated_at: "2026-08-25T17:51:56Z"
+        additions: 1
+        deletions: 0
+        changed_files: 1
+      - number: 4
+        title: "Open PR with two labels"
+        body: "Frozen fixture. Do not modify."
+        state: open
+        draft: false
+        author: mrsixw
+        labels: ["bug", "wip"]
+        head: fixture-4
+        head_sha: 2a4bdb078571d56025d485648021e6c3b321eb6a
+        base: main
+        created_at: "2026-08-25T17:51:16Z"
+        updated_at: "2026-08-25T17:51:57Z"
+        additions: 1
+        deletions: 0
+        changed_files: 1
+      - number: 5
+        title: "Draft PR awaiting work"
+        body: "Frozen fixture. Do not modify."
+        state: open
+        draft: true
+        author: mrsixw
+        labels: []
+        head: fixture-5
+        head_sha: e62577732b4d28a26598bacf8629e11f0308a0da
+        base: main
+        created_at: "2026-08-25T17:51:20Z"
+        updated_at: "2026-08-25T17:51:20Z"
+        additions: 1
+        deletions: 0
+        changed_files: 1
+      - number: 6
+        title: "Second draft PR"
+        body: "Frozen fixture. Do not modify."
+        state: open
+        draft: true
+        author: mrsixw
+        labels: ["enhancement"]
+        head: fixture-6
+        head_sha: 3e07c2296b141817775a158d346fddb3aafedb05
+        base: main
+        created_at: "2026-08-25T17:51:24Z"
+        updated_at: "2026-08-25T17:51:59Z"
+        additions: 1
+        deletions: 0
+        changed_files: 1
+      - number: 7
+        title: "Closed without merging"
+        body: "Frozen fixture. Do not modify."
+        state: closed
+        draft: false
+        author: mrsixw
+        labels: []
+        head: fixture-7
+        head_sha: 6752fc3b621e447380b3773e349d0d4c370a62b2
+        base: main
+        created_at: "2026-08-25T17:51:28Z"
+        updated_at: "2026-08-25T17:52:01Z"
+        closed_at: "2026-08-25T17:52:01Z"
+        additions: 1
+        deletions: 0
+        changed_files: 1
+      - number: 8
+        title: "Merged fixture PR"
+        body: "Frozen fixture. Do not modify."
+        state: merged
+        draft: false
+        author: mrsixw
+        labels: []
+        head: fixture-8
+        head_sha: 915182ecfb8a9ec10180c524c8d5d97d0b4aebd1
+        base: main
+        created_at: "2026-08-25T17:51:31Z"
+        updated_at: "2026-08-25T17:52:03Z"
+        closed_at: "2026-08-25T17:52:03Z"
+        merged_at: "2026-08-25T17:52:03Z"
+        additions: 1
+        deletions: 0
+        changed_files: 1
