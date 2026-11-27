@@ -16,6 +16,7 @@
 ## Fidelity is the product
 - A fake is only worth having while it answers the way the real service does. Model every response on the real API's documented shape, and on observed behaviour where the two differ.
 - When the fake and a real service disagree, the real service is right. Fix the fake, and add the case to the conformance check.
+- That holds against an issue too. Where an issue's spec and the real service differ, follow the service and list the departure in the PR and the fake's doc: see [ADR 0006](docs/design/adr/0006-real-service-over-issue-spec.md).
 - Never add a behaviour to a fake that no consumer needs. Each endpoint should trace back to a call a consumer actually makes.
 
 ## Work Items
