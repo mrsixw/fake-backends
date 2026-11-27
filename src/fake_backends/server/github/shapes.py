@@ -10,6 +10,7 @@ live, so ``html_url`` paths read ``/{owner}/{repo}/pull/{n}`` as on github.com.
 from __future__ import annotations
 
 import datetime as dt
+import hashlib
 from dataclasses import dataclass
 from typing import Any
 
@@ -44,6 +45,7 @@ __all__ = [
 # Label ids are derived from the repository's, leaving room for this many.
 _LABEL_IDS_PER_REPO = 100
 _NO_ASSOCIATION = "NONE"
+_REACTIONS = ("+1", "-1", "laugh", "hooray", "confused", "heart", "rocket", "eyes")
 _OWNER_ASSOCIATION = "OWNER"
 
 
@@ -85,6 +87,7 @@ def simple_user(state: GitHubState, urls: Urls, login: str) -> dict[str, Any]:
         "received_events_url": f"{api}/received_events",
         "type": "Organization" if user.is_org else "User",
         "site_admin": False,
+        "user_view_type": "public",
     }
 
 
@@ -118,6 +121,7 @@ def private_user(state: GitHubState, urls: Urls, login: str) -> dict[str, Any]:
         "disk_usage": 0,
         "collaborators": 0,
         "two_factor_authentication": True,
+        "twitter_username": None,
     }
 
 
@@ -203,6 +207,14 @@ def repository(state: GitHubState, urls: Urls, repo: Repo) -> dict[str, Any]:
         "archived": repo.archived,
         "disabled": False,
         "license": None,
+        "allow_forking": True,
+        "is_template": False,
+        "web_commit_signoff_required": False,
+        "has_discussions": False,
+        "has_pull_requests": True,
+        "pull_request_creation_policy": "all",
+        "topics": [],
+        "visibility": "private" if repo.private else "public",
         "pushed_at": timestamp(repo.pushed_at),
         "created_at": timestamp(repo.created_at),
         "updated_at": timestamp(repo.pushed_at),
@@ -210,14 +222,15 @@ def repository(state: GitHubState, urls: Urls, repo: Repo) -> dict[str, Any]:
 
 
 def _label(urls: Urls, repo: Repo, name: str, index: int) -> dict[str, Any]:
+    label = repo.label(name)
     return {
         "id": index,
         "node_id": _node_id("LA", index),
         "url": f"{urls.api}/repos/{repo.full_name}/labels/{name}",
-        "name": name,
-        "description": None,
-        "color": "ededed",
-        "default": False,
+        "name": label.name,
+        "description": label.description,
+        "color": label.color,
+        "default": label.default,
         "archived_at": None,
         "archived_by": None,
     }
@@ -279,7 +292,8 @@ def pull(state: GitHubState, urls: Urls, repo: Repo, pr: Pull) -> dict[str, Any]
         "updated_at": timestamp(pr.updated_at),
         "closed_at": timestamp(pr.closed_at),
         "merged_at": timestamp(pr.merged_at),
-        "merge_commit_sha": pr.head_sha if pr.merged else None,
+        # GitHub keeps a test merge commit for every pull request.
+        "merge_commit_sha": hashlib.sha1(f"merge:{pr.head_sha}".encode()).hexdigest(),
         "assignee": users[0] if users else None,
         "assignees": users,
         "requested_reviewers": [
@@ -555,6 +569,15 @@ def _issue_core(
         "created_at": timestamp(item.created_at),
         "updated_at": timestamp(item.updated_at),
         "author_association": _association(repo, item.author),
+        "timeline_url": f"{url}/timeline",
+        "performed_via_github_app": None,
+        "reactions": {
+            "url": f"{url}/reactions",
+            "total_count": 0,
+            **dict.fromkeys(_REACTIONS, 0),
+        },
+        "type": None,
+        "issue_field_values": [],
     }
     if is_pr:
         html = f"{urls.web}/{repo.full_name}/pull/{item.number}"
@@ -575,8 +598,10 @@ def issue(
     """An issue as ``/repos/{o}/{r}/issues`` returns it.
 
     A pull request read this way carries a ``pull_request`` key, as on GitHub.
+    Unlike a search result, it says who closed it.
     """
-    return _issue_core(state, urls, repo, item)
+    closer = simple_user(state, urls, repo.owner) if item.state == "closed" else None
+    return {**_issue_core(state, urls, repo, item), "closed_by": closer}
 
 
 def search_item(

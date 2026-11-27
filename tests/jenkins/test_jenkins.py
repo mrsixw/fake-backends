@@ -389,7 +389,8 @@ def test_the_jeeves_fixture(base_url):
     )
     jenkins = Jenkins(base_url, basic("jeeves-e2e", "jeeves-e2e-token"))
     names = [j["name"] for j in jenkins.json("")["jobs"]]
-    assert names == ["e2e-freestyle", "e2e-pipeline", "e2e-lock-holder", "e2e-folder"]
+    # Sorted by name, as Jenkins lists them.
+    assert names == ["e2e-folder", "e2e-freestyle", "e2e-lock-holder", "e2e-pipeline"]
     assert [j["name"] for j in jenkins.json(job_path("e2e-folder"))["jobs"]] == [
         "nested"
     ]

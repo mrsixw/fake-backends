@@ -1,0 +1,106 @@
+# Every deliberate difference between a fake and the real service, and every
+# value the comparison checks exactly. A probe is listed by its name in
+# conformance/probes.py; "all" applies to every probe of that service.
+#
+#   not_modelled: real fields the fake leaves out on purpose (children too)
+#   volatile:     fields whose type or nullability depends on the real
+#                 account or the moment, so only their presence is compared
+#   values:       fields the seed fixes, whose values must be equal
+#   optional:     fields either side may have or lack, such as those a
+#                 token's scope decides
+#
+# Each entry says why. A new difference is a fake to fix, unless the reason
+# for excluding it would be as good as these.
+
+github:
+  all: {}
+  probes:
+    user:
+      # Private to the account, and read by no consumer.
+      not_modelled: [notification_email, plan]
+      # Profile fields of whoever owns the workflow's token.
+      volatile: [name, location, hireable, bio, blog, company, email]
+      # The private-user fields: GitHub sends them only to a token with the
+      # user scope, so the real side has them or not by token. Seen both
+      # ways: a local gh token got them, the workflow's GH_TOKEN did not.
+      optional:
+        - collaborators
+        - disk_usage
+        - owned_private_repos
+        - private_gists
+        - total_private_repos
+        - two_factor_authentication
+    open pull:
+      values: &pull_values
+        - number
+        - title
+        - state
+        - draft
+        - merged
+        - user.login
+        - labels[].name
+        - labels[].description
+        - head.ref
+        - head.sha
+        - base.ref
+        - base.repo.full_name
+        - base.repo.archived
+        - created_at
+        - closed_at
+        - merged_at
+    merged pull:
+      values: *pull_values
+    unprotected branch:
+      values: [message]
+    unknown pull:
+      values: [message]
+    check runs:
+      values: [total_count]
+    search issues:
+      values: [total_count, "items[].number", "items[].title", "items[].state"]
+    list issues:
+      values: ["[].number", "[].title", "[].state", "[].labels[].name"]
+    graphql search:
+      # URLs differ by host; their paths are what breakfast reads.
+      values: [data.owner.login, data.search.issueCount, "data.search.nodes[].repository.name"]
+    graphql search open:
+      values: [data.search.issueCount]
+    graphql review decision:
+      values: [data.repository.pullRequest.reviewDecision]
+    graphql unknown pull:
+      values: ["errors[].type", "errors[].path", data.repository.pullRequest]
+    graphql review batch:
+      values: [data.pr0.pullRequest.reviews.totalCount, data.pr1.pullRequest.reviewDecision]
+
+jenkins:
+  all:
+    # Where and when the instance runs: timestamps, durations and crumbs are
+    # compared for type alone, since values, not types, are what change.
+    volatile: []
+  probes:
+    root:
+      # Null until an instance's Jenkins URL is configured, as jeeves' is not.
+      volatile: [url]
+      values: ["jobs[].name", "jobs[]._class", mode, numExecutors]
+    me:
+      # The user's configured mail address; jeeves' fixture sets none.
+      volatile: ["property[].address"]
+      # The real user has a dozen more properties, from plugins no consumer
+      # reads; the fake carries the ones jeeves can meet.
+      values: [id, fullName]
+    folder:
+      values: [name, "jobs[].name", "jobs[].color"]
+    job:
+      values:
+        - name
+        - "property[].parameterDefinitions[].name"
+        - "property[].parameterDefinitions[].defaultParameterValue.value"
+        - "property[].parameterDefinitions[]._class"
+    build:
+      values: [number, result, building, "actions[].parameters[].value", "actions[].causes[].userId"]
+    missing permalink:
+      values: []
+    lockable resources:
+      values: ["resources[].name", "resources[].labels", "resources[].free", "resources[].description"]
+    progressive log:
+      values: []

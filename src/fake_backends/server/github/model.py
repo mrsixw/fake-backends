@@ -206,6 +206,32 @@ class Release:
 
 
 @dataclass
+class Label:
+    name: str
+    description: str
+    color: str
+    default: bool
+
+
+# The labels GitHub gives every new repository, as it describes them.
+GITHUB_DEFAULT_LABELS = (
+    Label("bug", "Something isn't working", "d73a4a", True),
+    Label(
+        "documentation", "Improvements or additions to documentation", "0075ca", True
+    ),
+    Label("duplicate", "This issue or pull request already exists", "cfd3d7", True),
+    Label("enhancement", "New feature or request", "a2eeef", True),
+    Label("good first issue", "Good for newcomers", "7057ff", True),
+    Label("help wanted", "Extra attention is needed", "008672", True),
+    Label("invalid", "This doesn't seem right", "e4e669", True),
+    Label("question", "Further information is requested", "d876e3", True),
+    Label("wontfix", "This will not be worked on", "ffffff", True),
+)
+# A label used without being declared, as GitHub creates one.
+UNDECLARED_LABEL_COLOR = "ededed"
+
+
+@dataclass
 class Repo:
     id: int
     owner: str
@@ -221,6 +247,12 @@ class Repo:
     pulls: dict[int, Pull]
     issues: dict[int, Issue]
     releases: list[Release]
+    labels: dict[str, Label] = field(default_factory=dict)
+
+    def label(self, name: str) -> Label:
+        return self.labels.get(name.lower()) or Label(
+            name, "", UNDECLARED_LABEL_COLOR, False
+        )
 
     @property
     def full_name(self) -> str:
@@ -610,6 +642,7 @@ def _parse_repo(state: GitHubState, raw: Any, where: str) -> None:
         pulls={},
         issues={},
         releases=[],
+        labels=_parse_labels(item.get("labels"), f"{where}.labels"),
     )
     state.repos[(owner.lower(), name.lower())] = repo
     for i, pull in enumerate(_list(item.get("pulls"), f"{where}.pulls")):
@@ -643,6 +676,24 @@ def _parse_repo(state: GitHubState, raw: Any, where: str) -> None:
                 f"{where}.releases[{i}]",
             )
         )
+
+
+def _parse_labels(raw: Any, where: str) -> dict[str, Label]:
+    """A repository's labels; GitHub's defaults unless the seed lists its own."""
+    if raw is None:
+        return {label.name: label for label in GITHUB_DEFAULT_LABELS}
+    labels = {}
+    for i, entry in enumerate(_list(raw, where)):
+        at = f"{where}[{i}]"
+        entry = _mapping(entry, at)
+        name = str(_required(entry, "name", at))
+        labels[name.lower()] = Label(
+            name=name,
+            description=str(entry.get("description", "")),
+            color=str(entry.get("color", UNDECLARED_LABEL_COLOR)),
+            default=bool(entry.get("default", False)),
+        )
+    return labels
 
 
 def _add(repo: Repo, item: Pull | Issue, where: str) -> None:

@@ -4,7 +4,7 @@ Container-hosted fake **GitHub**, **JIRA** and **Jenkins** APIs with fault injec
 
 Each fake serves the API calls a real tool makes. It can be seeded with data, told to fail on purpose, and asked which requests it received. End-to-end suites can then drive a real built binary through both its happy paths and its failure paths: rate limits, 5xx responses, timeouts, dropped connections and malformed bodies.
 
-> **Status:** the shared server core, the image pipeline, the test helper and all three fakes are built. The nightly conformance check is tracked in [issue 5](https://github.com/mrsixw/fake-backends/issues/5).
+> **Status:** the shared server core, the image pipeline, the test helper, all three fakes and the nightly conformance check are built.
 
 ## Images
 
@@ -19,7 +19,7 @@ All three are built on a shared core ([issue 1](https://github.com/mrsixw/fake-b
 - multi-arch images published to GHCR;
 - the `fake_backends.testing` pytest helper, documented below.
 
-A nightly conformance check ([issue 5](https://github.com/mrsixw/fake-backends/issues/5)) compares the fakes with real GitHub and Jenkins. JIRA has no free, stable real instance to compare against, so fake-jira's fidelity check is Atlassian's published OpenAPI specs instead: every response its tests see is validated against them ([docs/jira.md](docs/jira.md#fidelity)).
+A nightly conformance check compares the fakes with real GitHub and Jenkins: see [Conformance](#conformance). JIRA has no free, stable real instance to compare against, so fake-jira's fidelity check is Atlassian's published OpenAPI specs instead: every response its tests see is validated against them ([docs/jira.md](docs/jira.md#fidelity)).
 
 ## Control API
 
@@ -165,6 +165,31 @@ The image listens on port 8080, runs as an unprivileged user and has a `HEALTHCH
 Every merge to `main` releases. git-mkver computes the version from the tags and the Conventional Commit messages since the last one, and every pull request's `version` check shows what its merge would release.
 
 A release pushes each published image to `ghcr.io/mrsixw/<image>:<version>` for `linux/amd64` and `linux/arm64`, then creates the tag and a GitHub release listing each image's digest. Pin images by that digest. The first release of a new image stops until its GHCR package is made public, a one-time switch in the package's settings. Nothing is pushed outside a release, and no version commit is pushed to `main`: see [ADR 0005](docs/design/adr/0005-release-from-tags.md).
+
+## Conformance
+
+A fake is only worth having while it answers the way the real service does. The **Conformance** workflow (`.github/workflows/conformance.yml`) runs nightly and on demand. It never gates a pull request, and runs on one only when the check itself changes. It sends the same requests to a real service and to its fake, and fails if they differ.
+
+| Fake | Compared with |
+|---|---|
+| fake-github | Real GitHub. It reads the frozen [`breakfast-fixtures`](https://github.com/mrsixw/breakfast-fixtures) repository, and fake-github loads its `breakfast-fixtures` seed. |
+| fake-jenkins | jeeves' own end-to-end Jenkins image (its pinned plugins and Configuration-as-Code), furnished with jeeves' jobs. fake-jenkins loads `jeeves-fixtures`. |
+| fake-jira | **Not compared.** There is no free, stable real JIRA, so fake-jira's fidelity check is Atlassian's published OpenAPI specs, which its tests validate every response against ([docs/jira.md](docs/jira.md#fidelity)). |
+
+Each request is a probe, listed in `conformance/probes.py`. The GraphQL probes are the consumers' own queries.
+
+- **Shapes:** every field's path and JSON type are compared, null included, along with the status and selected headers.
+- **Values:** compared only where the seed fixes them, such as titles, states, counts and job names.
+- **Exclusions:** every deliberate exception lives in `conformance/rules.yaml`, with its reason. That includes fields that only some tokens see. That covers a real field the fake leaves out, and a field whose type depends on the real account or instance. A new difference is a fake to fix, unless its reason would be as good as those.
+
+The job summary lists every difference. To run a comparison locally:
+
+```bash
+FAKE_BACKEND=github FAKE_PORT=8080 uv run python -m fake_backends.server &
+GITHUB_TOKEN=$(gh auth token) uv run python -m conformance.run github --fake http://127.0.0.1:8080
+```
+
+For Jenkins, also start jeeves' image (`tests/e2e/docker` in a jeeves checkout, at the commit the workflow pins), set `JEEVES_DOCKER_DIR` to that directory, and pass `--real` with the instance's URL.
 
 ## Consumers
 
