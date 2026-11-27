@@ -63,7 +63,7 @@ class GitHubBackend(Backend):
             *download_routes(),
         ]
 
-    def unauthorized(self) -> Response:
+    def unauthorized(self, request: RequestInfo) -> Response:
         return JSONResponse(
             {
                 "message": "Bad credentials",

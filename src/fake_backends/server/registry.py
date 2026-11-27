@@ -37,6 +37,9 @@ BACKENDS: dict[str, BackendEntry] = {
     # any fake exists, and is never published.
     "core": BackendEntry("fake_backends.server.core:CoreBackend", published=False),
     "github": BackendEntry("fake_backends.server.github:GitHubBackend", published=True),
+    "jenkins": BackendEntry(
+        "fake_backends.server.jenkins:JenkinsBackend", published=True
+    ),
     # FAKE_JIRA_MODE (cloud or server) picks the API when the image starts.
     "jira": BackendEntry("fake_backends.server.jira:JiraBackend", published=True),
 }

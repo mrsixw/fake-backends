@@ -4,7 +4,7 @@ Container-hosted fake **GitHub**, **JIRA** and **Jenkins** APIs with fault injec
 
 Each fake serves the API calls a real tool makes. It can be seeded with data, told to fail on purpose, and asked which requests it received. End-to-end suites can then drive a real built binary through both its happy paths and its failure paths: rate limits, 5xx responses, timeouts, dropped connections and malformed bodies.
 
-> **Status:** the shared server core, the image pipeline, the test helper, fake-github and fake-jira are built. fake-jenkins is tracked in this repo's issues.
+> **Status:** the shared server core, the image pipeline, the test helper and all three fakes are built. The nightly conformance check is tracked in [issue 5](https://github.com/mrsixw/fake-backends/issues/5).
 
 ## Images
 
@@ -12,7 +12,7 @@ Each fake serves the API calls a real tool makes. It can be seeded with data, to
 |---|---|---|
 | `fake-github` | REST and GraphQL: [docs/github.md](docs/github.md) | [issue 2](https://github.com/mrsixw/fake-backends/issues/2) |
 | `fake-jira` | Cloud v3 and Server v2 modes: [docs/jira.md](docs/jira.md) | [issue 3](https://github.com/mrsixw/fake-backends/issues/3) |
-| `fake-jenkins` | Jenkins core, plus Lockable Resources | [issue 4](https://github.com/mrsixw/fake-backends/issues/4) |
+| `fake-jenkins` | Jenkins core, plus Lockable Resources: [docs/jenkins.md](docs/jenkins.md) | [issue 4](https://github.com/mrsixw/fake-backends/issues/4) |
 
 All three are built on a shared core ([issue 1](https://github.com/mrsixw/fake-backends/issues/1)):
 - a control API under `/_fake/` for seed state, fault rules and the request journal;

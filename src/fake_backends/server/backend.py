@@ -56,8 +56,12 @@ class Backend(ABC):
         """Whether a route answers without a credential."""
         return False
 
-    def unauthorized(self) -> Response:
-        """The service's own answer to a missing or unknown credential."""
+    def unauthorized(self, request: RequestInfo) -> Response:
+        """The service's own answer to a missing or unknown credential.
+
+        ``request`` lets a backend answer the two differently, as Jenkins
+        does: a login redirect for none, a 401 for a wrong one.
+        """
         return JSONResponse(UNAUTHORIZED_BODY, status_code=HTTPStatus.UNAUTHORIZED)
 
     def details(self, request: RequestInfo) -> dict[str, Any]:

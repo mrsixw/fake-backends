@@ -163,7 +163,7 @@ class FaultMiddleware:
 
         async def answer(send_to: Send) -> None:
             if identity is None and not self.backend.is_public(info.method, info.path):
-                await self.backend.unauthorized()(scope, receive, send_to)
+                await self.backend.unauthorized(info)(scope, receive, send_to)
             else:
                 await self.app(scope, receive, send_to)
 

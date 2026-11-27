@@ -1,0 +1,77 @@
+# The Jenkins jeeves' end-to-end suite builds in a container
+# (tests/e2e/docker in https://github.com/mrsixw/jeeves): the same user,
+# jobs, folder and lockable resources, so its scenarios can run here.
+#
+# Load it with POST /_fake/fixtures/jeeves-fixtures. It accepts the API token
+# `jeeves-e2e-token` for the user `jeeves-e2e`.
+tokens:
+  jeeves-e2e-token: jeeves-e2e
+jenkins:
+  description: "jeeves end-to-end fixture — ephemeral, do not trust"
+  executors: 2
+users:
+  - id: jeeves-e2e
+    full_name: jeeves-e2e
+    email: jeeves-e2e@example.invalid
+    # loggedInUsersCanDoAnything: the only user may do everything.
+    admin: true
+jobs:
+  - name: e2e-freestyle
+    type: freestyle
+    description: "jeeves end-to-end fixture: freestyle"
+    parameters:
+      - name: GREETING
+        description: Echoed to the console so a scenario can read it back.
+        default: default-greeting
+    run_log:
+      - "Started by user jeeves-e2e\n"
+      - "greeting=${GREETING}\n"
+      - "Finished: SUCCESS\n"
+  - name: e2e-pipeline
+    type: pipeline
+    description: "jeeves end-to-end fixture: pipeline"
+    parameters:
+      - name: GREETING
+        description: Echoed to the console so a scenario can read it back.
+        default: default-greeting
+    run_log:
+      - "Started by user jeeves-e2e\n[Pipeline] Start of Pipeline\n"
+      - "[Pipeline] echo\ngreeting=${GREETING}\n"
+      - "[Pipeline] End of Pipeline\nFinished: SUCCESS\n"
+  - name: e2e-lock-holder
+    type: pipeline
+    description: "jeeves end-to-end fixture: holds a lockable resource"
+    parameters:
+      - name: HOLD_SECONDS
+        description: How long to keep the lock before releasing it.
+        default: "30"
+    locks: [e2e-lock-held]
+    run_log:
+      - "[Pipeline] lock\nLock acquired on [e2e-lock-held]\n"
+      - "[Pipeline] sleep\nSleeping for ${HOLD_SECONDS} sec\n"
+      - "Lock released on resource [e2e-lock-held]\nFinished: SUCCESS\n"
+  - name: e2e-folder
+    type: folder
+    description: "jeeves end-to-end fixture: a folder"
+    jobs:
+      - name: nested
+        type: freestyle
+        description: "jeeves end-to-end fixture: freestyle"
+        parameters:
+          - name: GREETING
+            description: Echoed to the console so a scenario can read it back.
+            default: default-greeting
+        run_log:
+          - "greeting=${GREETING}\n"
+          - "Finished: SUCCESS\n"
+lockable_resources:
+  resources:
+    - name: e2e-lock-free
+      description: Reserve and release me.
+      labels: e2e-pool linux
+    - name: e2e-lock-spare
+      description: The second member of the pool.
+      labels: e2e-pool
+    - name: e2e-lock-held
+      description: Locked by a running build, not by a reservation.
+      labels: e2e-held

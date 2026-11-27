@@ -65,7 +65,7 @@ class JiraBackend(Backend):
             return value.strip()
         return None
 
-    def unauthorized(self) -> Response:
+    def unauthorized(self, request: RequestInfo) -> Response:
         return JSONResponse(
             shapes.error(
                 [
